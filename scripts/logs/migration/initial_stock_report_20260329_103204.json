@@ -1,0 +1,25 @@
+{
+  "migration_type": "Initial Stock Levels",
+  "status": "COMPLETED_WITH_ERRORS",
+  "statistics": {
+    "total_source_records": 1301,
+    "total_valid_records": 1298,
+    "total_invalid_records": 3,
+    "total_products_mapped": 6793,
+    "total_stock_levels_created": 0,
+    "total_stock_levels_updated": 0,
+    "total_movements_created": 0,
+    "total_zero_stock": 1101,
+    "total_errors": 1298,
+    "duration_seconds": 0,
+    "start_time": "2026-03-29T10:32:03.097264",
+    "end_time": null
+  },
+  "validation_summary": {
+    "total_errors": 0,
+    "total_warnings": 0,
+    "errors": [],
+    "warnings": []
+  },
+  "timestamp": "2026-03-29T10:32:04.208261"
+}

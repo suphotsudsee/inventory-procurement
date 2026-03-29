@@ -1,0 +1,80 @@
+{
+  "source": {
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3333,
+    "user": "root",
+    "password": "123456",
+    "database": "jhcisdb",
+    "charset": "utf8mb4"
+  },
+  "target": {
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "12345678",
+    "database": "inventory_db",
+    "charset": "utf8mb4"
+  },
+  "migration": {
+    "batch_size": 1000,
+    "dry_run": false,
+    "validate_before_import": true,
+    "create_backup": true,
+    "stop_on_error": false,
+    "log_level": "INFO"
+  },
+  "field_mappings": {
+    "drug_type_map": {
+      "01": "ยาเม็ด",
+      "02": "ยาแคปซูล",
+      "03": "ยาน้ำ",
+      "04": "ยาฉีด",
+      "05": "ยาภายนอก",
+      "06": "ยาเตรียมพิเศษ",
+      "07": "เวชภัณฑ์",
+      "08": "วัสดุสิ้นเปลือง",
+      "09": "อุปกรณ์การแพทย์",
+      "10": "เวชภัณฑ์อื่นๆ"
+    },
+    "unit_mapping": {
+      "Tab": "เม็ด",
+      "Cap": "แคปซูล",
+      "Bottle": "ขวด",
+      "Vial": "ขวดฉีด",
+      "Tube": "ท่อ",
+      "Box": "กล่อง",
+      "Pcs": "ชิ้น"
+    }
+  },
+  "tables": {
+    "source_tables": {
+      "drugs": "cdrug",
+      "stock_remain": "cdrugremain",
+      "receive": "drugstorereceive",
+      "receive_detail": "drugstorereceivedetail"
+    },
+    "target_tables": {
+      "products": "products",
+      "categories": "categories",
+      "suppliers": "suppliers",
+      "stock_levels": "stock_levels",
+      "stock_movements": "stock_movements"
+    }
+  },
+  "data_quality": {
+    "remove_duplicates": true,
+    "trim_whitespace": true,
+    "validate_dates": true,
+    "validate_numbers": true,
+    "max_string_length": true,
+    "check_nulls": true
+  },
+  "logging": {
+    "log_dir": "./logs/migration",
+    "log_file_prefix": "migration",
+    "save_failed_records": true,
+    "failed_records_file": "./logs/migration/failed_records.csv"
+  }
+}

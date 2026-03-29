@@ -1,0 +1,14 @@
+# Python Dependencies for Data Migration Scripts
+# Install with: pip install -r requirements.txt
+
+# MySQL Database Driver
+pymysql>=1.0.0
+
+# Data Processing (optional, but recommended)
+pandas>=1.5.0
+
+# Environment Variables (optional)
+python-dotenv>=1.0.0
+
+# Progress Bar (optional)
+tqdm>=4.65.0

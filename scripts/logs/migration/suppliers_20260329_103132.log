@@ -1,0 +1,28 @@
+2026-03-29 10:31:32 - INFO - ============================================================
+2026-03-29 10:31:32 - INFO - Starting Supplier Migration
+2026-03-29 10:31:32 - INFO - ============================================================
+2026-03-29 10:31:32 - INFO - Database connections established
+2026-03-29 10:31:32 - INFO - Fetching supplier data from source...
+2026-03-29 10:31:32 - INFO - Fetched 11 unique supplier names from source
+2026-03-29 10:31:32 - INFO - Cleansing supplier data...
+2026-03-29 10:31:32 - INFO - Cleansed 11 supplier records
+2026-03-29 10:31:32 - INFO - Deduplicating supplier records...
+2026-03-29 10:31:32 - INFO - Found 10 duplicates, 1 unique suppliers
+2026-03-29 10:31:32 - INFO - Validating supplier data...
+2026-03-29 10:31:32 - INFO - Validation complete: 1 valid, 0 invalid
+2026-03-29 10:31:32 - INFO - Ensuring target tables exist...
+2026-03-29 10:31:32 - INFO - Target tables ready
+2026-03-29 10:31:32 - INFO - Starting supplier import...
+2026-03-29 10:31:32 - ERROR - Error importing องค์การเภสัชฯ: (1054, "Unknown column 'supplier_type' in 'field list'")
+2026-03-29 10:31:32 - INFO - Import complete: 0 imported, 0 updated, 1 errors
+2026-03-29 10:31:32 - INFO - Report saved to: logs\migration\suppliers_report_20260329_103132.json
+2026-03-29 10:31:32 - INFO - ============================================================
+2026-03-29 10:31:32 - INFO - Supplier Migration Complete!
+2026-03-29 10:31:32 - INFO - Total source records: 11
+2026-03-29 10:31:32 - INFO - Unique suppliers: 11
+2026-03-29 10:31:32 - INFO - Duplicates found: 10
+2026-03-29 10:31:32 - INFO - Suppliers imported: 0
+2026-03-29 10:31:32 - INFO - Suppliers updated: 0
+2026-03-29 10:31:32 - INFO - Errors: 1
+2026-03-29 10:31:32 - INFO - ============================================================
+2026-03-29 10:31:32 - INFO - Database connections closed

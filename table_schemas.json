@@ -1,0 +1,602 @@
+{
+  "cdrug": [
+    {
+      "COLUMN_NAME": "drugcode",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 24,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": "",
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "mapdrugmixer",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 10,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "mapdrugpowerful",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 5,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "mapdrugmodel",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 3,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugname",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "pack",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "unitsell",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 15,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "unitusage",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 15,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "cost",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "sell",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "costcaldrugstore",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "sellcaldrugstore",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "amountdefaultpay",
+      "DATA_TYPE": "smallint",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugtype",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 2,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugtypesub",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 2,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugforspecialdisease",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "antibio",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "requisition",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "requisitionamount",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "amountstartdrugstore",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "nationaccount",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugcodeaccountdept",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugcaution",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "stockempty",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "lotno",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 20,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "dateexpire",
+      "DATA_TYPE": "date",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "files18epi",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 9,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "files18epiappoint",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 6,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugflag",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "datemfp",
+      "DATA_TYPE": "date",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugcodeold",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 50,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "ordering",
+      "DATA_TYPE": "tinyint",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "tcode",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugcode24",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 24,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugproperties",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "druggenericname",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 220,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "unitpacking",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 50,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "toothtype",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "claim",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "chargeitem",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 2,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "chargelist",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 6,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugnamethai",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "tmtcode",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 55,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "tmtcodedateupdate",
+      "DATA_TYPE": "datetime",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "qrcode",
+      "DATA_TYPE": "blob",
+      "CHARACTER_MAXIMUM_LENGTH": 65535,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "daystockremain",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "issend2hisgateway",
+      "DATA_TYPE": "enum",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "issend2hisgatewaydt",
+      "DATA_TYPE": "datetime",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "issend2hisgatewayall",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "noclaimratio",
+      "DATA_TYPE": "decimal",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "drugcategory",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 50,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": ""
+    }
+  ],
+  "drugstorereceive": [
+    {
+      "COLUMN_NAME": "pcucode",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 9,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "receiveno",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "receivedate",
+      "DATA_TYPE": "date",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "receitype",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "recievenoreal",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 30,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "companyname",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 100,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "remark",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 255,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    }
+  ],
+  "drugstorereceivedetail": [
+    {
+      "COLUMN_NAME": "pcucode",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 9,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "receiveno",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "drugcode",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 24,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "amount",
+      "DATA_TYPE": "int",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "cost",
+      "DATA_TYPE": "double",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "expiredate",
+      "DATA_TYPE": "date",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "lotno",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 20,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "remark",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 100,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    }
+  ],
+  "cdrugremain": [
+    {
+      "COLUMN_NAME": "pcucode",
+      "DATA_TYPE": "varchar",
+      "CHARACTER_MAXIMUM_LENGTH": 9,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "drugcode",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 24,
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI"
+    },
+    {
+      "COLUMN_NAME": "remain",
+      "DATA_TYPE": "bigint",
+      "CHARACTER_MAXIMUM_LENGTH": null,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    },
+    {
+      "COLUMN_NAME": "requisition",
+      "DATA_TYPE": "char",
+      "CHARACTER_MAXIMUM_LENGTH": 1,
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": ""
+    }
+  ]
+}

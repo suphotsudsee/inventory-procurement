@@ -1,0 +1,31 @@
+2026-03-29 10:31:09 - INFO - ============================================================
+2026-03-29 10:31:09 - INFO - Starting Master Data Migration
+2026-03-29 10:31:09 - INFO - ============================================================
+2026-03-29 10:31:09 - INFO - Database connections established
+2026-03-29 10:31:09 - INFO - Fetching source data from cdrug table...
+2026-03-29 10:31:09 - INFO - Fetched 6821 records from source
+2026-03-29 10:31:09 - INFO - Cleansing data...
+2026-03-29 10:31:10 - INFO - Cleansed 6821 records, removed 0 duplicates
+2026-03-29 10:31:10 - INFO - Validating data...
+2026-03-29 10:31:10 - INFO - Validation complete: 6793 valid, 28 invalid
+2026-03-29 10:31:10 - INFO - Ensuring categories exist...
+2026-03-29 10:31:10 - INFO - Categories ready: 10 categories
+2026-03-29 10:31:10 - INFO - Starting data import...
+2026-03-29 10:31:10 - INFO - Processing batch 1/7 (1-1000)
+2026-03-29 10:31:10 - INFO - Processing batch 2/7 (1001-2000)
+2026-03-29 10:31:11 - INFO - Processing batch 3/7 (2001-3000)
+2026-03-29 10:31:11 - INFO - Processing batch 4/7 (3001-4000)
+2026-03-29 10:31:12 - INFO - Processing batch 5/7 (4001-5000)
+2026-03-29 10:31:12 - INFO - Processing batch 6/7 (5001-6000)
+2026-03-29 10:31:13 - INFO - Processing batch 7/7 (6001-6793)
+2026-03-29 10:31:13 - INFO - Import complete: 6793 imported, 0 updated, 0 errors
+2026-03-29 10:31:13 - INFO - Report saved to: logs\migration\master_data_report_20260329_103113.json
+2026-03-29 10:31:13 - INFO - ============================================================
+2026-03-29 10:31:13 - INFO - Migration Complete!
+2026-03-29 10:31:13 - INFO - Total records processed: 6821
+2026-03-29 10:31:13 - INFO - Records imported: 6793
+2026-03-29 10:31:13 - INFO - Records updated: 0
+2026-03-29 10:31:13 - INFO - Records invalid: 28
+2026-03-29 10:31:13 - INFO - Errors: 0
+2026-03-29 10:31:13 - INFO - ============================================================
+2026-03-29 10:31:13 - INFO - Database connections closed

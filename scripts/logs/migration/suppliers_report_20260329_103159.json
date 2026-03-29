@@ -1,0 +1,17 @@
+{
+  "migration_type": "Suppliers",
+  "status": "SUCCESS",
+  "statistics": {
+    "total_source_records": 11,
+    "total_unique_suppliers": 11,
+    "total_duplicates_found": 10,
+    "total_imported": 1,
+    "total_updated": 0,
+    "total_skipped": 0,
+    "total_errors": 0,
+    "duration_seconds": 0,
+    "start_time": "2026-03-29T10:31:59.400497",
+    "end_time": null
+  },
+  "timestamp": "2026-03-29T10:31:59.423497"
+}

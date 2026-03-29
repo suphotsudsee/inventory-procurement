@@ -1,0 +1,34 @@
+2026-03-29 10:29:26 - INFO - ============================================================
+2026-03-29 10:29:26 - INFO - Starting Master Data Migration
+2026-03-29 10:29:26 - INFO - ============================================================
+2026-03-29 10:29:26 - INFO - Database connections established
+2026-03-29 10:29:26 - INFO - Fetching source data from cdrug table...
+2026-03-29 10:29:26 - INFO - Fetched 6821 records from source
+2026-03-29 10:29:26 - INFO - Cleansing data...
+2026-03-29 10:29:26 - INFO - Cleansed 6821 records, removed 0 duplicates
+2026-03-29 10:29:26 - INFO - Validating data...
+2026-03-29 10:29:26 - INFO - Validation complete: 6793 valid, 28 invalid
+2026-03-29 10:29:26 - INFO - Ensuring categories exist...
+2026-03-29 10:29:26 - INFO - Created category: 01 - ยาเม็ด
+2026-03-29 10:29:26 - INFO - Created category: 02 - ยาแคปซูล
+2026-03-29 10:29:26 - INFO - Created category: 03 - ยาน้ำ
+2026-03-29 10:29:26 - INFO - Created category: 04 - ยาฉีด
+2026-03-29 10:29:26 - INFO - Created category: 05 - ยาภายนอก
+2026-03-29 10:29:26 - INFO - Created category: 06 - ยาเตรียมพิเศษ
+2026-03-29 10:29:26 - INFO - Created category: 07 - เวชภัณฑ์
+2026-03-29 10:29:26 - INFO - Created category: 10 - เวชภัณฑ์อื่นๆ
+2026-03-29 10:29:26 - INFO - Created category: 11 - อื่นๆ
+2026-03-29 10:29:26 - INFO - Created category: 91 - อื่นๆ
+2026-03-29 10:29:26 - INFO - Categories ready: 10 categories
+2026-03-29 10:29:26 - INFO - Starting data import...
+2026-03-29 10:29:26 - INFO - DRY RUN MODE - No data will be written
+2026-03-29 10:29:26 - INFO - Report saved to: logs\migration\master_data_report_20260329_102926.json
+2026-03-29 10:29:26 - INFO - ============================================================
+2026-03-29 10:29:26 - INFO - Migration Complete!
+2026-03-29 10:29:26 - INFO - Total records processed: 6821
+2026-03-29 10:29:26 - INFO - Records imported: 6793
+2026-03-29 10:29:26 - INFO - Records updated: 0
+2026-03-29 10:29:26 - INFO - Records invalid: 28
+2026-03-29 10:29:26 - INFO - Errors: 0
+2026-03-29 10:29:26 - INFO - ============================================================
+2026-03-29 10:29:26 - INFO - Database connections closed

@@ -1,0 +1,24 @@
+{
+  "migration_type": "Master Data (Drugs/Medical Supplies)",
+  "status": "COMPLETED_WITH_ERRORS",
+  "statistics": {
+    "total_source_records": 6821,
+    "total_valid_records": 0,
+    "total_invalid_records": 28,
+    "total_imported": 0,
+    "total_updated": 0,
+    "total_skipped": 0,
+    "total_errors": 6793,
+    "categories_created": 0,
+    "duration_seconds": 0,
+    "start_time": "2026-03-29T10:30:30.941154",
+    "end_time": null
+  },
+  "validation_summary": {
+    "total_errors": 0,
+    "total_warnings": 0,
+    "errors": [],
+    "warnings": []
+  },
+  "timestamp": "2026-03-29T10:30:40.971211"
+}
