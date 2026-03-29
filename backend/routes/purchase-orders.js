@@ -21,6 +21,7 @@ function mapStatus(status) {
 }
 
 async function loadOrders(where = '', params = [], tenantId) {
+  const normalizedWhere = String(where || '').trim().replace(/^AND\s+/i, '');
   const orders = await query(
     `
       SELECT
@@ -29,7 +30,7 @@ async function loadOrders(where = '', params = [], tenantId) {
       FROM purchase_orders po
       JOIN suppliers s ON s.id = po.supplier_id
       WHERE po.tenant_id = ?
-      ${where ? 'AND ' + where : ''}
+      ${normalizedWhere ? 'AND ' + normalizedWhere : ''}
       ORDER BY po.created_at DESC
     `,
     [tenantId, ...params]
@@ -137,7 +138,7 @@ async function createOrder({ tenantId, supplierId = '', expectedDate, items = []
     [result.insertId, DEFAULT_USER_ID]
   );
 
-  const orders = await loadOrders('AND po.id = ?', [result.insertId], tenantId);
+  const orders = await loadOrders('po.id = ?', [result.insertId], tenantId);
   return orders[0];
 }
 
@@ -175,7 +176,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
     const tenantId = req.tenantId;
-    const orders = await loadOrders('AND po.id = ?', [req.params.id], tenantId);
+    const orders = await loadOrders('po.id = ?', [req.params.id], tenantId);
     if (!orders[0]) {
       return res.status(404).json({ message: 'Purchase order not found' });
     }
@@ -264,6 +265,7 @@ router.post('/from-low-stock', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const updates = [];
     const params = [];
 
@@ -289,9 +291,9 @@ router.put('/:id', async (req, res, next) => {
       return res.status(400).json({ message: 'No fields to update' });
     }
 
-    params.push(req.params.id);
-    await query(`UPDATE purchase_orders SET ${updates.join(', ')} WHERE id = ?`, params);
-    const orders = await loadOrders('WHERE po.id = ?', [req.params.id]);
+    params.push(req.params.id, tenantId);
+    await query(`UPDATE purchase_orders SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, params);
+    const orders = await loadOrders('po.id = ?', [req.params.id], tenantId);
     if (!orders[0]) {
       return res.status(404).json({ message: 'Purchase order not found' });
     }
