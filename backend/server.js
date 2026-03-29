@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const authRouter = require('./routes/auth');
 const productsRouter = require('./routes/products');
@@ -43,6 +43,7 @@ app.get('/health', (req, res) => {
 // Rate limiting on auth endpoints
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRouter);
+app.use('/api/dashboard', tenantLimiter, isAuthenticated, dashboardRouter);
 
 // Apply rate limiting to all API routes
 app.use('/api', tenantLimiter);
@@ -52,7 +53,6 @@ app.use('/api', isAuthenticated, requireTenant, requireActiveTenant);
 app.use('/api/products', productsRouter);
 app.use('/api/stock', stockRouter);
 app.use('/api/purchase-orders', purchaseOrdersRouter);
-app.use('/api/dashboard', dashboardRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/approvals', approvalsRouter);
 app.use('/api/reports', reportsRouter);

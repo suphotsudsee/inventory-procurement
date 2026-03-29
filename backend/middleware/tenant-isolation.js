@@ -20,7 +20,7 @@ function requireTenant(req, res, next) {
     });
   }
 
-  const userTenantId = user.tenantId;
+  const userTenantId = user.tenantId || 1;
   const userRole = user.role;
 
   // Admin/superuser can access all tenants (for executive view)

@@ -100,6 +100,21 @@ async function ensureColumn(tableName, columnName, definition) {
   await query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
 }
 
+async function ensureTenantColumns() {
+  await ensureColumn('products', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('suppliers', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('users', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('users', 'last_login', 'TIMESTAMP NULL');
+  await ensureColumn('purchase_orders', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('purchase_order_items', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('purchase_order_items', 'product_code', 'VARCHAR(50) NULL');
+  await ensureColumn('invp_stock_lots', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('invp_stock_movements', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('invp_stock_adjustments', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('invp_goods_receipts', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+  await ensureColumn('invp_goods_receipt_items', 'tenant_id', 'INT NOT NULL DEFAULT 1');
+}
+
 async function ensureAppSchema() {
   if (initialized) {
     return;
@@ -363,6 +378,7 @@ async function ensureAppSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await ensureTenantColumns();
   await seedStockLevelsFromLots();
   initialized = true;
 }

@@ -9,7 +9,6 @@ const router = express.Router();
 router.get('/summary', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const tenantId = req.tenantId;
     const [inventory] = await query(`
       SELECT
         COUNT(*) AS total_products,
@@ -19,16 +18,16 @@ router.get('/summary', async (req, res, next) => {
       FROM products p
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
       ${lotBalanceJoin}
-      WHERE p.tenant_id = ? AND p.is_active = 1
-    `, [tenantId]);
-    const [suppliers] = await query('SELECT COUNT(*) AS total_suppliers FROM suppliers WHERE tenant_id = ? AND is_active = 1', [tenantId]);
-    const [orders] = await query('SELECT COUNT(*) AS pending_approvals FROM purchase_orders WHERE tenant_id = ? AND status = "pending_approval"', [tenantId]);
-    const [transactions] = await query('SELECT COUNT(*) AS recent_transactions FROM invp_stock_movements WHERE tenant_id = ? AND DATE(created_at) = CURDATE()', [tenantId]);
+      WHERE p.is_active = 1
+    `);
+    const [suppliers] = await query('SELECT COUNT(*) AS total_suppliers FROM suppliers WHERE is_active = 1');
+    const [orders] = await query('SELECT COUNT(*) AS pending_approvals FROM purchase_orders WHERE status = "pending_approval"');
+    const [transactions] = await query('SELECT COUNT(*) AS recent_transactions FROM invp_stock_movements WHERE DATE(created_at) = CURDATE()');
     const [expiry] = await query(`
       SELECT COUNT(*) AS expiring_soon
       FROM invp_stock_lots
-      WHERE tenant_id = ? AND quantity > 0 AND expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
-    `, [tenantId]);
+      WHERE quantity > 0 AND expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+    `);
 
     res.json({
       totalStockValue: Number(inventory.total_stock_value || 0),
@@ -48,7 +47,6 @@ router.get('/summary', async (req, res, next) => {
 router.get('/expiry-alerts', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const tenantId = req.tenantId;
     const days = Number(req.query.days || 90);
     const rows = await query(
       `
@@ -63,15 +61,15 @@ router.get('/expiry-alerts', async (req, res, next) => {
           l.location,
           DATEDIFF(l.expiry_date, CURDATE()) AS days_until_expiry
         FROM invp_stock_lots l
-        JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
+        JOIN products p ON p.product_code = l.product_code
         ${unitJoin}
-        WHERE l.tenant_id = ? AND l.quantity > 0
+        WHERE l.quantity > 0
           AND l.expiry_date IS NOT NULL
           AND l.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
         ORDER BY l.expiry_date ASC
         LIMIT 200
       `,
-      [tenantId, days]
+      [days]
     );
 
     res.json(
@@ -96,7 +94,6 @@ router.get('/expiry-alerts', async (req, res, next) => {
 router.get('/low-stock', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const tenantId = req.tenantId;
     const rows = await query(`
       SELECT
         p.product_code AS id,
@@ -114,11 +111,11 @@ router.get('/low-stock', async (req, res, next) => {
       ${unitJoin}
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
       ${lotBalanceJoin}
-      WHERE p.tenant_id = ? AND p.is_active = 1
+      WHERE p.is_active = 1
         AND ${currentStockExpr} <= COALESCE(sl.reorder_point, p.reorder_point, 0)
       ORDER BY ${currentStockExpr} ASC
       LIMIT 100
-    `, [tenantId]);
+    `);
 
     res.json(
       rows.map((row) => ({

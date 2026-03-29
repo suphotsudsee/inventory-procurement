@@ -59,7 +59,6 @@ const baseSelect = `
   ${unitJoin}
   LEFT JOIN stock_levels sl ON sl.product_id = p.id
   ${lotBalanceJoin}
-  WHERE p.tenant_id = ?
 `;
 
 const baseFrom = `
@@ -69,7 +68,6 @@ const baseFrom = `
   ${unitJoin}
   LEFT JOIN stock_levels sl ON sl.product_id = p.id
   ${lotBalanceJoin}
-  WHERE p.tenant_id = ?
 `;
 
 async function findCategoryId(categoryName) {
