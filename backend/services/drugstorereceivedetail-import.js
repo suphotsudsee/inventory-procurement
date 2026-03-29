@@ -149,7 +149,7 @@ function loadAndAggregateContent(content) {
   };
 }
 
-async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
+async function importDrugstoreReceiveDetailCsv({ tenantId, content, sourceRef }) {
   const resolvedSourceRef = path.basename(String(sourceRef || 'drugstorereceivedetail.csv'));
   await ensureAppSchema();
 
@@ -160,8 +160,8 @@ async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
   if (productCodes.length > 0) {
     const placeholders = productCodes.map(() => '?').join(',');
     const [existingProducts] = await pool.query(
-      `SELECT product_code FROM products WHERE product_code IN (${placeholders})`,
-      productCodes
+      `SELECT product_code FROM products WHERE tenant_id = ? AND product_code IN (${placeholders})`,
+      [tenantId, ...productCodes]
     );
     existingProductSet = new Set(existingProducts.map((row) => String(row.product_code)));
   }
@@ -174,23 +174,24 @@ async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
     await connection.beginTransaction();
 
     await connection.execute(
-      'DELETE FROM invp_stock_movements WHERE reference = ? AND movement_type = "receipt"',
-      [resolvedSourceRef]
+      'DELETE FROM invp_stock_movements WHERE tenant_id = ? AND reference = ? AND movement_type = "receipt"',
+      [tenantId, resolvedSourceRef]
     );
     await connection.execute(
-      'DELETE FROM invp_stock_lots WHERE source_type = "legacy_csv" AND source_ref = ?',
-      [resolvedSourceRef]
+      'DELETE FROM invp_stock_lots WHERE tenant_id = ? AND source_type = "legacy_csv" AND source_ref = ?',
+      [tenantId, resolvedSourceRef]
     );
 
     for (const record of validRecords) {
       await connection.execute(
         `
           INSERT INTO invp_stock_lots (
-            product_code, lot_number, expiry_date, quantity, unit_cost, location,
+            tenant_id, product_code, lot_number, expiry_date, quantity, unit_cost, location,
             source_type, source_ref, supplier_id, supplier_name, received_date
-          ) VALUES (?, ?, ?, ?, ?, 'MAIN', 'legacy_csv', ?, NULL, 'CSV Import', NOW())
+          ) VALUES (?, ?, ?, ?, ?, ?, 'MAIN', 'legacy_csv', ?, NULL, 'CSV Import', NOW())
         `,
         [
+          tenantId,
           record.productCode,
           record.importLotNumber,
           record.expiryDate,
@@ -203,10 +204,11 @@ async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
       await connection.execute(
         `
           INSERT INTO invp_stock_movements (
-            movement_type, product_code, lot_number, quantity, reference, performed_by, notes
-          ) VALUES ('receipt', ?, ?, ?, ?, 'csv-import', ?)
+            tenant_id, movement_type, product_code, lot_number, quantity, reference, performed_by, notes
+          ) VALUES (?, 'receipt', ?, ?, ?, ?, 'csv-import', ?)
         `,
         [
+          tenantId,
           record.productCode,
           record.importLotNumber,
           record.quantity,
@@ -227,22 +229,23 @@ async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
         NOW()
       FROM products p
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
-      WHERE sl.product_id IS NULL
-    `);
+      WHERE p.tenant_id = ? AND sl.product_id IS NULL
+    `, [tenantId]);
 
     await connection.execute(`
       UPDATE stock_levels sl
       JOIN products p ON p.id = sl.product_id
       LEFT JOIN (
-        SELECT product_code, COALESCE(SUM(quantity), 0) AS quantity
+        SELECT tenant_id, product_code, COALESCE(SUM(quantity), 0) AS quantity
         FROM invp_stock_lots
-        GROUP BY product_code
-      ) lb ON lb.product_code = p.product_code
+        GROUP BY tenant_id, product_code
+      ) lb ON lb.product_code = p.product_code AND lb.tenant_id = p.tenant_id
       SET
         sl.quantity = COALESCE(lb.quantity, 0),
         sl.last_counted_at = NOW(),
         sl.updated_at = CURRENT_TIMESTAMP
-    `);
+      WHERE p.tenant_id = ?
+    `, [tenantId]);
 
     await connection.commit();
   } catch (error) {
@@ -259,9 +262,9 @@ async function importDrugstoreReceiveDetailCsv({ content, sourceRef }) {
         COALESCE(SUM(quantity), 0) AS total_quantity,
         COALESCE(SUM(quantity * unit_cost), 0) AS total_value
       FROM invp_stock_lots
-      WHERE source_type = 'legacy_csv' AND source_ref = ?
+      WHERE tenant_id = ? AND source_type = 'legacy_csv' AND source_ref = ?
     `,
-    [resolvedSourceRef]
+    [tenantId, resolvedSourceRef]
   );
 
   return {

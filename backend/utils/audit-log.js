@@ -91,7 +91,7 @@ async function logSensitiveOperation(options) {
           ip_address
         ) VALUES (?, ?, ?, ?, TRUE, NULL)
       `,
-      [tenant_id, user_id, `SENSITIVE:${operation}`, details]
+      [tenant_id, user_id || null, `SENSITIVE:${operation}`, details || null]
     );
   } catch (error) {
     console.error('Failed to log sensitive operation:', error);

@@ -112,11 +112,16 @@ function buildImportLotNo(lotNo) {
   return `${base.slice(0, Math.max(1, 100 - suffix.length))}${suffix}`;
 }
 
-function buildReceiptNumber(receiveNo) {
-  return `LEGACY-CSV-${String(receiveNo).trim() || '0'}`;
+function buildReceiptNumber(tenantId, receiveNo) {
+  return `LEGACY-T${tenantId}-CSV-${String(receiveNo).trim() || '0'}`;
+}
+
+function buildReceiptLikePattern(tenantId) {
+  return `LEGACY-T${tenantId}-CSV-%`;
 }
 
 async function importDrugstoreReceiveBundle({
+  tenantId,
   receiveContent,
   detailContent,
   receiveFileName = 'drugstorereceive.csv',
@@ -124,6 +129,7 @@ async function importDrugstoreReceiveBundle({
 }) {
   const receiveSourceRef = path.basename(String(receiveFileName || 'drugstorereceive.csv'));
   const detailSourceRef = path.basename(String(detailFileName || 'drugstorereceivedetail.csv'));
+  const receiptLikePattern = buildReceiptLikePattern(tenantId);
 
   await ensureAppSchema();
 
@@ -144,7 +150,7 @@ async function importDrugstoreReceiveBundle({
     const receiveNo = normalizeText(receiveno) || '0';
     receipts.set(receiveNo, {
       receiveNo,
-      receiptNumber: buildReceiptNumber(receiveNo),
+      receiptNumber: buildReceiptNumber(tenantId, receiveNo),
       receivedDate: normalizeDate(receivedate),
       receiptType: normalizeText(receitype),
       invoiceNumber: normalizeText(recievenoreal),
@@ -193,8 +199,8 @@ async function importDrugstoreReceiveBundle({
   if (productCodes.length > 0) {
     const placeholders = productCodes.map(() => '?').join(',');
     const [existingProducts] = await pool.query(
-      `SELECT product_code FROM products WHERE product_code IN (${placeholders})`,
-      productCodes
+      `SELECT product_code FROM products WHERE tenant_id = ? AND product_code IN (${placeholders})`,
+      [tenantId, ...productCodes]
     );
     existingProductSet = new Set(existingProducts.map((row) => String(row.product_code)));
   }
@@ -207,14 +213,16 @@ async function importDrugstoreReceiveBundle({
     await connection.beginTransaction();
 
     await connection.execute(
-      "DELETE FROM invp_stock_movements WHERE reference LIKE 'LEGACY-CSV-%' AND performed_by = 'csv-import'"
+      "DELETE FROM invp_stock_movements WHERE tenant_id = ? AND reference LIKE ? AND performed_by = 'csv-import'",
+      [tenantId, receiptLikePattern]
     );
     await connection.execute(
-      "DELETE FROM invp_stock_lots WHERE source_type = 'legacy_csv' AND source_ref IN (?, ?)",
-      [receiveSourceRef, detailSourceRef]
+      "DELETE FROM invp_stock_lots WHERE tenant_id = ? AND source_type = 'legacy_csv' AND source_ref IN (?, ?)",
+      [tenantId, receiveSourceRef, detailSourceRef]
     );
     await connection.execute(
-      "DELETE FROM invp_goods_receipts WHERE receipt_number LIKE 'LEGACY-CSV-%'"
+      'DELETE FROM invp_goods_receipts WHERE tenant_id = ? AND receipt_number LIKE ?',
+      [tenantId, receiptLikePattern]
     );
 
     const receiptIdByReceiveNo = new Map();
@@ -222,10 +230,11 @@ async function importDrugstoreReceiveBundle({
       const [result] = await connection.execute(
         `
           INSERT INTO invp_goods_receipts (
-            receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
-          ) VALUES (?, NULL, ?, ?, ?, 'csv-import', ?)
+            tenant_id, receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
+          ) VALUES (?, ?, NULL, ?, ?, ?, 'csv-import', ?)
         `,
         [
+          tenantId,
           receipt.receiptNumber,
           receipt.supplierName,
           receipt.invoiceNumber,
@@ -239,7 +248,7 @@ async function importDrugstoreReceiveBundle({
     for (const item of validItems) {
       const receipt = receipts.get(item.receiveNo) || {
         receiveNo: item.receiveNo,
-        receiptNumber: buildReceiptNumber(item.receiveNo),
+        receiptNumber: buildReceiptNumber(tenantId, item.receiveNo),
         receivedDate: null,
         invoiceNumber: '',
         supplierName: 'CSV Import',
@@ -251,10 +260,11 @@ async function importDrugstoreReceiveBundle({
         const [result] = await connection.execute(
           `
             INSERT INTO invp_goods_receipts (
-              receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
-            ) VALUES (?, NULL, ?, ?, ?, 'csv-import', ?)
+              tenant_id, receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
+            ) VALUES (?, ?, NULL, ?, ?, ?, 'csv-import', ?)
           `,
           [
+            tenantId,
             receipt.receiptNumber,
             receipt.supplierName,
             receipt.invoiceNumber,
@@ -271,18 +281,18 @@ async function importDrugstoreReceiveBundle({
       await connection.execute(
         `
           INSERT INTO invp_goods_receipt_items (
-            goods_receipt_id, product_code, lot_number, expiry_date, quantity, unit_cost, location
-          ) VALUES (?, ?, ?, ?, ?, ?, 'MAIN')
+            tenant_id, goods_receipt_id, product_code, lot_number, expiry_date, quantity, unit_cost, location
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'MAIN')
         `,
-        [goodsReceiptId, item.productCode, item.lotNumber, item.expiryDate, item.quantity, unitCost]
+        [tenantId, goodsReceiptId, item.productCode, item.lotNumber, item.expiryDate, item.quantity, unitCost]
       );
 
       await connection.execute(
         `
           INSERT INTO invp_stock_lots (
-            product_code, lot_number, expiry_date, quantity, unit_cost, location,
+            tenant_id, product_code, lot_number, expiry_date, quantity, unit_cost, location,
             source_type, source_ref, supplier_id, supplier_name, received_date
-          ) VALUES (?, ?, ?, ?, ?, 'MAIN', 'legacy_csv', ?, NULL, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, 'MAIN', 'legacy_csv', ?, NULL, ?, ?)
           ON DUPLICATE KEY UPDATE
             quantity = quantity + VALUES(quantity),
             unit_cost = VALUES(unit_cost),
@@ -291,6 +301,7 @@ async function importDrugstoreReceiveBundle({
             updated_at = CURRENT_TIMESTAMP
         `,
         [
+          tenantId,
           item.productCode,
           item.lotNumber,
           item.expiryDate,
@@ -305,10 +316,11 @@ async function importDrugstoreReceiveBundle({
       await connection.execute(
         `
           INSERT INTO invp_stock_movements (
-            movement_type, product_code, lot_number, quantity, reference, performed_by, notes
-          ) VALUES ('receipt', ?, ?, ?, ?, 'csv-import', ?)
+            tenant_id, movement_type, product_code, lot_number, quantity, reference, performed_by, notes
+          ) VALUES (?, 'receipt', ?, ?, ?, ?, 'csv-import', ?)
         `,
         [
+          tenantId,
           item.productCode,
           item.lotNumber,
           item.quantity,
@@ -329,22 +341,23 @@ async function importDrugstoreReceiveBundle({
         NOW()
       FROM products p
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
-      WHERE sl.product_id IS NULL
-    `);
+      WHERE p.tenant_id = ? AND sl.product_id IS NULL
+    `, [tenantId]);
 
     await connection.execute(`
       UPDATE stock_levels sl
       JOIN products p ON p.id = sl.product_id
       LEFT JOIN (
-        SELECT product_code, COALESCE(SUM(quantity), 0) AS quantity
+        SELECT tenant_id, product_code, COALESCE(SUM(quantity), 0) AS quantity
         FROM invp_stock_lots
-        GROUP BY product_code
-      ) lb ON lb.product_code = p.product_code
+        GROUP BY tenant_id, product_code
+      ) lb ON lb.product_code = p.product_code AND lb.tenant_id = p.tenant_id
       SET
         sl.quantity = COALESCE(lb.quantity, 0),
         sl.last_counted_at = NOW(),
         sl.updated_at = CURRENT_TIMESTAMP
-    `);
+      WHERE p.tenant_id = ?
+    `, [tenantId]);
 
     await connection.commit();
   } catch (error) {
@@ -357,15 +370,15 @@ async function importDrugstoreReceiveBundle({
   const [summaryRows] = await pool.query(
     `
       SELECT
-        (SELECT COUNT(*) FROM invp_goods_receipts WHERE receipt_number LIKE 'LEGACY-CSV-%') AS receipts,
+        (SELECT COUNT(*) FROM invp_goods_receipts WHERE tenant_id = ? AND receipt_number LIKE ?) AS receipts,
         (SELECT COUNT(*) FROM invp_goods_receipt_items gri
           JOIN invp_goods_receipts gr ON gr.id = gri.goods_receipt_id
-          WHERE gr.receipt_number LIKE 'LEGACY-CSV-%') AS receipt_items,
-        (SELECT COUNT(*) FROM invp_stock_lots WHERE source_type = 'legacy_csv' AND source_ref = ?) AS lots,
-        (SELECT COALESCE(SUM(quantity), 0) FROM invp_stock_lots WHERE source_type = 'legacy_csv' AND source_ref = ?) AS quantity,
-        (SELECT COALESCE(SUM(quantity * unit_cost), 0) FROM invp_stock_lots WHERE source_type = 'legacy_csv' AND source_ref = ?) AS value
+          WHERE gri.tenant_id = ? AND gr.tenant_id = ? AND gr.receipt_number LIKE ?) AS receipt_items,
+        (SELECT COUNT(*) FROM invp_stock_lots WHERE tenant_id = ? AND source_type = 'legacy_csv' AND source_ref = ?) AS lots,
+        (SELECT COALESCE(SUM(quantity), 0) FROM invp_stock_lots WHERE tenant_id = ? AND source_type = 'legacy_csv' AND source_ref = ?) AS quantity,
+        (SELECT COALESCE(SUM(quantity * unit_cost), 0) FROM invp_stock_lots WHERE tenant_id = ? AND source_type = 'legacy_csv' AND source_ref = ?) AS value
     `,
-    [detailSourceRef, detailSourceRef, detailSourceRef]
+    [tenantId, receiptLikePattern, tenantId, tenantId, receiptLikePattern, tenantId, detailSourceRef, tenantId, detailSourceRef, tenantId, detailSourceRef]
   );
 
   return {

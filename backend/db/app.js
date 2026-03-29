@@ -115,6 +115,21 @@ async function ensureTenantColumns() {
   await ensureColumn('invp_goods_receipt_items', 'tenant_id', 'INT NOT NULL DEFAULT 1');
 }
 
+async function ensureProductTenantScopedUniqueness() {
+  const indexes = await query('SHOW INDEX FROM products');
+  const hasGlobalUniqueProductCode = indexes.some(
+    (row) => row.Key_name === 'product_code' && Number(row.Non_unique) === 0
+  );
+  const hasTenantProductUnique = indexes.some(
+    (row) => row.Key_name === 'uq_products_tenant_code'
+  );
+
+  if (hasGlobalUniqueProductCode && !hasTenantProductUnique) {
+    await query('ALTER TABLE products DROP INDEX product_code');
+    await query('ALTER TABLE products ADD UNIQUE KEY uq_products_tenant_code (tenant_id, product_code)');
+  }
+}
+
 async function ensureAppSchema() {
   if (initialized) {
     return;
@@ -379,6 +394,7 @@ async function ensureAppSchema() {
   `);
 
   await ensureTenantColumns();
+  await ensureProductTenantScopedUniqueness();
   await seedStockLevelsFromLots();
   initialized = true;
 }

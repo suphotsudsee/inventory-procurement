@@ -3,6 +3,7 @@
  * Only accessible by admin/superadmin users
  */
 
+const crypto = require('crypto');
 const express = require('express');
 const { pool, query } = require('../db/pool');
 const { ensureAppSchema } = require('../db/app');
@@ -134,10 +135,14 @@ router.post('/tenants', async (req, res, next) => {
       max_users = 10,
       max_products = 5000,
       trial_days = 30,
+      admin_username,
+      admin_password,
+      admin_full_name = 'Tenant Administrator',
+      admin_email = '',
     } = req.body;
 
-    if (!tenant_code || !tenant_name) {
-      return res.status(400).json({ message: 'tenant_code and tenant_name are required' });
+    if (!tenant_code || !tenant_name || !admin_username || !admin_password) {
+      return res.status(400).json({ message: 'tenant_code, tenant_name, admin_username, and admin_password are required' });
     }
 
     await connection.beginTransaction();
@@ -146,6 +151,11 @@ router.post('/tenants', async (req, res, next) => {
     const existing = await query('SELECT id FROM tenants WHERE tenant_code = ? LIMIT 1', [tenant_code]);
     if (existing && existing.length > 0) {
       return res.status(409).json({ message: 'Tenant code already exists' });
+    }
+
+    const existingAdmin = await query('SELECT id FROM users WHERE username = ? LIMIT 1', [String(admin_username).trim()]);
+    if (existingAdmin && existingAdmin.length > 0) {
+      return res.status(409).json({ message: 'Admin username already exists' });
     }
 
     const [result] = await connection.execute(
@@ -164,9 +174,7 @@ router.post('/tenants', async (req, res, next) => {
       [tenant_code, tenant_name, tenant_type, subscription_plan, max_users, max_products, trial_days]
     );
 
-    // Create default admin user for the tenant
-    const defaultAdminUsername = `admin_${tenant_code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const defaultPasswordHash = '$2b$10$DEFAULT_HASH_REPLACE_ON_FIRST_LOGIN'; // Force password reset
+    const passwordHash = crypto.createHash('sha256').update(String(admin_password)).digest('hex');
 
     await connection.execute(
       `
@@ -180,7 +188,13 @@ router.post('/tenants', async (req, res, next) => {
           is_active
         ) VALUES (?, ?, ?, ?, ?, 'admin', TRUE)
       `,
-      [result.insertId, defaultAdminUsername, defaultPasswordHash, 'Tenant Administrator', '']
+      [
+        result.insertId,
+        String(admin_username).trim(),
+        passwordHash,
+        String(admin_full_name || 'Tenant Administrator').trim(),
+        String(admin_email || '').trim(),
+      ]
     );
 
     // Set default configurations
@@ -209,7 +223,122 @@ router.post('/tenants', async (req, res, next) => {
       id: result.insertId,
       tenant_code,
       tenant_name,
-      message: 'Tenant created successfully. Default admin user created with username: ' + defaultAdminUsername,
+      admin_username: String(admin_username).trim(),
+      message: 'Tenant created successfully',
+    });
+  } catch (error) {
+    await connection.rollback();
+    next(error);
+  } finally {
+    connection.release();
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/clone-master
+ * Clone product master and thresholds from a source tenant
+ */
+router.post('/tenants/:id/clone-master', async (req, res, next) => {
+  const connection = await pool.getConnection();
+  try {
+    await ensureAppSchema();
+    const targetTenantId = Number(req.params.id);
+    const sourceTenantId = Number(req.body.sourceTenantId || 1);
+
+    if (!Number.isInteger(targetTenantId) || !Number.isInteger(sourceTenantId)) {
+      return res.status(400).json({ message: 'Invalid tenant id' });
+    }
+
+    if (targetTenantId === sourceTenantId) {
+      return res.status(400).json({ message: 'Source and target tenant must be different' });
+    }
+
+    const tenants = await query(
+      'SELECT id, tenant_code, tenant_name FROM tenants WHERE id IN (?, ?)',
+      [sourceTenantId, targetTenantId]
+    );
+    if (tenants.length < 2) {
+      return res.status(404).json({ message: 'Source or target tenant not found' });
+    }
+
+    await connection.beginTransaction();
+
+    const [insertResult] = await connection.execute(
+      `
+        INSERT INTO products (
+          product_code, product_name, product_name_thai, generic_name, category_id, drugtype,
+          pack_size, unit_sell, unit_usage, min_stock_level, max_stock_level, reorder_point,
+          cost_price, sell_price, unit_cost, unit_price, lot_number, expiry_date, old_code,
+          tmt_code, properties, caution, is_antibiotic, is_active, source_checksum, barcode,
+          storage_condition, tenant_id
+        )
+        SELECT
+          sp.product_code, sp.product_name, sp.product_name_thai, sp.generic_name, sp.category_id, sp.drugtype,
+          sp.pack_size, sp.unit_sell, sp.unit_usage, sp.min_stock_level, sp.max_stock_level, sp.reorder_point,
+          sp.cost_price, sp.sell_price, sp.unit_cost, sp.unit_price, sp.lot_number, sp.expiry_date, sp.old_code,
+          sp.tmt_code, sp.properties, sp.caution, sp.is_antibiotic, sp.is_active, sp.source_checksum, sp.barcode,
+          sp.storage_condition, ?
+        FROM products sp
+        WHERE sp.tenant_id = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM products tp
+            WHERE tp.tenant_id = ? AND tp.product_code = sp.product_code
+          )
+      `,
+      [targetTenantId, sourceTenantId, targetTenantId]
+    );
+
+    const [[sourceProductCountRow]] = await connection.query(
+      'SELECT COUNT(*) AS total FROM products WHERE tenant_id = ?',
+      [sourceTenantId]
+    );
+
+    const [[targetProductCountRow]] = await connection.query(
+      'SELECT COUNT(*) AS total FROM products WHERE tenant_id = ?',
+      [targetTenantId]
+    );
+
+    await connection.execute(
+      `
+        INSERT INTO stock_levels (product_id, quantity, min_level, max_level, reorder_point, last_counted_at)
+        SELECT
+          tp.id,
+          COALESCE(source_stock.quantity, 0),
+          COALESCE(source_stock.min_level, tp.min_stock_level, 0),
+          COALESCE(source_stock.max_level, tp.max_stock_level, 0),
+          COALESCE(source_stock.reorder_point, tp.reorder_point, 0),
+          NOW()
+        FROM products tp
+        LEFT JOIN products sp
+          ON sp.product_code = tp.product_code
+         AND sp.tenant_id = ?
+        LEFT JOIN stock_levels source_stock
+          ON source_stock.product_id = sp.id
+        LEFT JOIN stock_levels target_stock
+          ON target_stock.product_id = tp.id
+        WHERE tp.tenant_id = ?
+          AND target_stock.product_id IS NULL
+      `,
+      [sourceTenantId, targetTenantId]
+    );
+
+    await connection.commit();
+
+    logSensitiveOperation({
+      tenant_id: targetTenantId,
+      user_id: req.user?.userId,
+      operation: 'clone_tenant_master',
+      details: JSON.stringify({ sourceTenantId, insertedProducts: insertResult.affectedRows || 0 }),
+    });
+
+    res.json({
+      message: 'Tenant master cloned successfully',
+      sourceTenantId,
+      targetTenantId,
+      insertedProducts: Number(insertResult.affectedRows || 0),
+      sourceProductCount: Number(sourceProductCountRow.total || 0),
+      targetProductCount: Number(targetProductCountRow.total || 0),
     });
   } catch (error) {
     await connection.rollback();
@@ -384,7 +513,7 @@ router.get('/tenants/:id/usage', async (req, res, next) => {
           (SELECT COUNT(*) FROM invp_stock_movements WHERE tenant_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) AS movements_30d,
           
           -- Storage
-          (SELECT SUM(LENGTH(product_name) + LENGTH(COALESCE(description, ''))) FROM products WHERE tenant_id = ?) AS products_storage_bytes
+          (SELECT SUM(LENGTH(product_name) + LENGTH(COALESCE(generic_name, ''))) FROM products WHERE tenant_id = ?) AS products_storage_bytes
       `,
       [
         tenantId, tenantId,

@@ -1,14 +1,26 @@
 const express = require('express');
 const { query } = require('../db/pool');
 const { ensureAppSchema } = require('../db/app');
-const { lotBalanceJoin, currentStockExpr } = require('../utils/stock-balance');
 const { unitJoin, unitNameExpr } = require('../utils/unit-name');
 
 const router = express.Router();
+const tenantLotBalanceJoin = `
+  LEFT JOIN (
+    SELECT tenant_id, product_code, COALESCE(SUM(quantity), 0) AS quantity
+    FROM invp_stock_lots
+    GROUP BY tenant_id, product_code
+  ) lb ON lb.product_code = p.product_code AND lb.tenant_id = p.tenant_id
+`;
+const currentStockExpr = 'COALESCE(lb.quantity, 0)';
+
+function getRequestTenantId(req) {
+  return req.tenantId || req.user?.tenantId || 1;
+}
 
 router.get('/summary', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = getRequestTenantId(req);
     const [inventory] = await query(`
       SELECT
         COUNT(*) AS total_products,
@@ -17,17 +29,17 @@ router.get('/summary', async (req, res, next) => {
         SUM(CASE WHEN ${currentStockExpr} <= COALESCE(sl.reorder_point, p.reorder_point, 0) THEN 1 ELSE 0 END) AS low_stock_count
       FROM products p
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
-      ${lotBalanceJoin}
-      WHERE p.is_active = 1
-    `);
-    const [suppliers] = await query('SELECT COUNT(*) AS total_suppliers FROM suppliers WHERE is_active = 1');
-    const [orders] = await query('SELECT COUNT(*) AS pending_approvals FROM purchase_orders WHERE status = "pending_approval"');
-    const [transactions] = await query('SELECT COUNT(*) AS recent_transactions FROM invp_stock_movements WHERE DATE(created_at) = CURDATE()');
+      ${tenantLotBalanceJoin}
+      WHERE p.tenant_id = ? AND p.is_active = 1
+    `, [tenantId]);
+    const [suppliers] = await query('SELECT COUNT(*) AS total_suppliers FROM suppliers WHERE tenant_id = ? AND is_active = 1', [tenantId]);
+    const [orders] = await query('SELECT COUNT(*) AS pending_approvals FROM purchase_orders WHERE tenant_id = ? AND status = "pending_approval"', [tenantId]);
+    const [transactions] = await query('SELECT COUNT(*) AS recent_transactions FROM invp_stock_movements WHERE tenant_id = ? AND DATE(created_at) = CURDATE()', [tenantId]);
     const [expiry] = await query(`
       SELECT COUNT(*) AS expiring_soon
       FROM invp_stock_lots
-      WHERE quantity > 0 AND expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
-    `);
+      WHERE tenant_id = ? AND quantity > 0 AND expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+    `, [tenantId]);
 
     res.json({
       totalStockValue: Number(inventory.total_stock_value || 0),
@@ -47,6 +59,7 @@ router.get('/summary', async (req, res, next) => {
 router.get('/expiry-alerts', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = getRequestTenantId(req);
     const days = Number(req.query.days || 90);
     const rows = await query(
       `
@@ -61,15 +74,16 @@ router.get('/expiry-alerts', async (req, res, next) => {
           l.location,
           DATEDIFF(l.expiry_date, CURDATE()) AS days_until_expiry
         FROM invp_stock_lots l
-        JOIN products p ON p.product_code = l.product_code
+        JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
         ${unitJoin}
-        WHERE l.quantity > 0
+        WHERE l.tenant_id = ?
+          AND l.quantity > 0
           AND l.expiry_date IS NOT NULL
           AND l.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
         ORDER BY l.expiry_date ASC
         LIMIT 200
       `,
-      [days]
+      [tenantId, days]
     );
 
     res.json(
@@ -94,6 +108,7 @@ router.get('/expiry-alerts', async (req, res, next) => {
 router.get('/low-stock', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = getRequestTenantId(req);
     const rows = await query(`
       SELECT
         p.product_code AS id,
@@ -110,12 +125,12 @@ router.get('/low-stock', async (req, res, next) => {
       LEFT JOIN categories c ON c.id = p.category_id
       ${unitJoin}
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
-      ${lotBalanceJoin}
-      WHERE p.is_active = 1
+      ${tenantLotBalanceJoin}
+      WHERE p.tenant_id = ? AND p.is_active = 1
         AND ${currentStockExpr} <= COALESCE(sl.reorder_point, p.reorder_point, 0)
       ORDER BY ${currentStockExpr} ASC
       LIMIT 100
-    `);
+    `, [tenantId]);
 
     res.json(
       rows.map((row) => ({

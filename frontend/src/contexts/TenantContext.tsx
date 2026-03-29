@@ -35,9 +35,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user has executive/admin access
-  const isExecutive = currentTenant?.subscription_plan === 'enterprise' || 
-                      localStorage.getItem('user_role') === 'admin';
+  // Only platform admins should have cross-tenant executive access.
+  const isExecutive = localStorage.getItem('user_role') === 'admin';
 
   useEffect(() => {
     loadTenantContext();

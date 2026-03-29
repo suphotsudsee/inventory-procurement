@@ -263,6 +263,57 @@ export interface LoginResponse {
   tenantId?: number;
 }
 
+export interface TenantRecord {
+  id: number;
+  tenant_code: string;
+  tenant_name: string;
+  tenant_type: 'hospital' | 'clinic' | 'pharmacy' | 'health_center';
+  status: 'active' | 'trial' | 'suspended' | 'cancelled';
+  subscription_plan: 'basic' | 'professional' | 'enterprise';
+  max_users: number;
+  max_products: number;
+  trial_ends_at?: string | null;
+  subscription_ends_at?: string | null;
+  product_count?: number;
+  user_count?: number;
+  pending_pos?: number;
+  usage?: {
+    product_count?: number;
+    user_count?: number;
+    stock_items?: number;
+    total_pos?: number;
+    pending_pos?: number;
+  };
+}
+
+export interface TenantUsageResponse {
+  tenant_id: string;
+  subscription_plan: string;
+  limits: {
+    max_products: number;
+    max_users: number;
+  };
+  usage: {
+    product_count: number;
+    deleted_products: number;
+    active_batches: number;
+    total_stock_items: number;
+    unique_products: number;
+    active_users: number;
+    deleted_users: number;
+    total_pos: number;
+    pending_pos: number;
+    approved_pos: number;
+    total_po_value: number;
+    movements_30d: number;
+    products_storage_bytes: number;
+  };
+  quota_utilization: {
+    products: string;
+    users: string;
+  };
+}
+
 export interface ReportFilter {
   startDate?: string;
   endDate?: string;
@@ -413,6 +464,46 @@ export const settingsApi = {
     password?: string;
   }) => api.put<UserAccount>(`/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean }>(`/users/${id}`),
+};
+
+export const adminApi = {
+  getTenants: (params?: { status?: string; type?: string; plan?: string; search?: string; page?: number; limit?: number }) =>
+    api.get<TenantRecord[] | PaginatedResponse<TenantRecord>>('/admin/tenants', { params }),
+  getTenant: (id: string | number) => api.get<TenantRecord>(`/admin/tenants/${id}`),
+  createTenant: (data: {
+    tenant_code: string;
+    tenant_name: string;
+    tenant_type: TenantRecord['tenant_type'];
+    subscription_plan: TenantRecord['subscription_plan'];
+    max_users: number;
+    max_products: number;
+    trial_days: number;
+    admin_username: string;
+    admin_password: string;
+    admin_full_name?: string;
+    admin_email?: string;
+  }) => api.post<{ id: number; tenant_code: string; tenant_name: string; admin_username: string; message: string }>('/admin/tenants', data),
+  updateTenant: (id: string | number, data: Partial<{
+    tenant_name: string;
+    tenant_type: TenantRecord['tenant_type'];
+    subscription_plan: TenantRecord['subscription_plan'];
+    max_users: number;
+    max_products: number;
+    status: TenantRecord['status'];
+    subscription_starts_at: string | null;
+    subscription_ends_at: string | null;
+  }>) => api.put<{ message: string }>(`/admin/tenants/${id}`, data),
+  deleteTenant: (id: string | number) => api.delete<{ message: string }>(`/admin/tenants/${id}`),
+  getTenantUsage: (id: string | number) => api.get<TenantUsageResponse>(`/admin/tenants/${id}/usage`),
+  cloneTenantMaster: (id: string | number, data: { sourceTenantId: number }) =>
+    api.post<{
+      message: string;
+      sourceTenantId: number;
+      targetTenantId: number;
+      insertedProducts: number;
+      sourceProductCount: number;
+      targetProductCount: number;
+    }>(`/admin/tenants/${id}/clone-master`, data),
 };
 
 export const authApi = {

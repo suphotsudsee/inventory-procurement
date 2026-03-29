@@ -25,8 +25,17 @@ const tenantLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+
     // Skip rate limiting for health checks
-    if (req.path === '/api/health' || req.path === '/api/dashboard/summary') {
+    if (
+      req.path === '/api/health' ||
+      req.path === '/health' ||
+      req.baseUrl === '/api/dashboard' ||
+      req.originalUrl.startsWith('/api/dashboard')
+    ) {
       return true;
     }
     return false;

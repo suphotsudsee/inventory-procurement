@@ -5,20 +5,21 @@ import { ProcurementPage } from './pages/ProcurementPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
+import { TenantsPage } from './pages/TenantsPage';
 import { authApi, AuthUser } from './services/api';
 import { Button } from './components/common/Button';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { TenantSwitcher } from './components/tenant/TenantSwitcher';
-import { ExecutiveDashboard } from './components/executive/ExecutiveDashboard';
 
-type AppTab = 'login' | 'dashboard' | 'stock' | 'procurement' | 'reports' | 'settings';
+type AppTab = 'login' | 'dashboard' | 'stock' | 'procurement' | 'reports' | 'settings' | 'tenants';
 
 const tabs: Array<{ id: Exclude<AppTab, 'login'>; label: string; icon: string }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'ภาพรวม' },
-  { id: 'stock', label: 'สต็อก', icon: 'คลัง' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'Overview' },
+  { id: 'stock', label: 'คลัง', icon: 'Stock' },
   { id: 'procurement', label: 'จัดซื้อ', icon: 'PO' },
   { id: 'reports', label: 'รายงาน', icon: 'BI' },
   { id: 'settings', label: 'Settings', icon: 'Admin' },
+  { id: 'tenants', label: 'Tenants', icon: 'SaaS' },
 ];
 
 function getTabFromHash(isAuthenticated: boolean): AppTab {
@@ -28,6 +29,7 @@ function getTabFromHash(isAuthenticated: boolean): AppTab {
   if (hash.startsWith('procurement')) return 'procurement';
   if (hash.startsWith('reports')) return 'reports';
   if (hash.startsWith('settings')) return 'settings';
+  if (hash.startsWith('tenants')) return 'tenants';
   return 'dashboard';
 }
 
@@ -50,10 +52,13 @@ function App() {
       try {
         const response = await authApi.me();
         setCurrentUser(response.data);
+        localStorage.setItem('user_role', response.data.role);
         setActiveTab(getTabFromHash(true));
       } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('tenant_id');
+        localStorage.removeItem('tenant_code');
+        localStorage.removeItem('user_role');
         setCurrentUser(null);
         setActiveTab('login');
         window.location.hash = '#login';
@@ -74,6 +79,7 @@ function App() {
   const handleLogin = (token: string, user: AuthUser) => {
     localStorage.setItem('token', token);
     localStorage.setItem('tenant_id', String(user.tenantId || 1));
+    localStorage.setItem('user_role', user.role);
     setCurrentUser(user);
     setActiveTab('dashboard');
     window.location.hash = '#dashboard';
@@ -87,6 +93,8 @@ function App() {
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('tenant_id');
+      localStorage.removeItem('tenant_code');
+      localStorage.removeItem('user_role');
       setCurrentUser(null);
       setActiveTab('login');
       window.location.hash = '#login';
@@ -101,7 +109,9 @@ function App() {
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="rounded-xl bg-white px-6 py-4 text-sm text-slate-600 shadow">กำลังตรวจสอบสิทธิ์ผู้ใช้...</div>
+        <div className="rounded-xl bg-white px-6 py-4 text-sm text-slate-600 shadow">
+          กำลังตรวจสอบสิทธิ์ผู้ใช้...
+        </div>
       </div>
     );
   }
@@ -137,13 +147,13 @@ function AppContent({
   onSelectTab: (tab: Exclude<AppTab, 'login'>) => void;
   onLogout: () => Promise<void>;
 }) {
-  const { isExecutive } = useTenant();
+  useTenant();
+  const visibleTabs = useMemo(
+    () => tabs.filter((tab) => tab.id !== 'tenants' || currentUser.role === 'admin'),
+    [currentUser.role]
+  );
 
   const page = useMemo(() => {
-    if (isExecutive && activeTab === 'dashboard') {
-      return <ExecutiveDashboard />;
-    }
-
     switch (activeTab) {
       case 'stock':
         return <StockManagementPage />;
@@ -153,10 +163,12 @@ function AppContent({
         return <ReportsPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'tenants':
+        return currentUser.role === 'admin' ? <TenantsPage /> : <DashboardPage />;
       default:
         return <DashboardPage />;
     }
-  }, [activeTab, isExecutive]);
+  }, [activeTab, currentUser.role]);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -189,7 +201,7 @@ function AppContent({
           </div>
 
           <nav className="flex flex-wrap gap-2">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"

@@ -301,6 +301,7 @@ router.post('/goods-receipt', async (req, res, next) => {
 
 router.post('/import/drugstorereceivedetail', async (req, res, next) => {
   try {
+    const tenantId = req.tenantId;
     const { content = '', fileName = 'drugstorereceivedetail.csv' } = req.body || {};
 
     if (!String(content || '').trim()) {
@@ -308,6 +309,7 @@ router.post('/import/drugstorereceivedetail', async (req, res, next) => {
     }
 
     const summary = await importDrugstoreReceiveDetailCsv({
+      tenantId,
       content,
       sourceRef: fileName,
     });
@@ -320,6 +322,7 @@ router.post('/import/drugstorereceivedetail', async (req, res, next) => {
 
 router.post('/import/drugstorereceive-bundle', async (req, res, next) => {
   try {
+    const tenantId = req.tenantId;
     const {
       receiveContent = '',
       detailContent = '',
@@ -332,6 +335,7 @@ router.post('/import/drugstorereceive-bundle', async (req, res, next) => {
     }
 
     const summary = await importDrugstoreReceiveBundle({
+      tenantId,
       receiveContent,
       detailContent,
       receiveFileName,

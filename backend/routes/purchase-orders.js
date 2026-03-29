@@ -48,7 +48,7 @@ async function loadOrders(where = '', params = [], tenantId) {
         p.product_name,
         ${unitNameExpr} AS unit
       FROM purchase_order_items poi
-      JOIN products p ON p.product_code = poi.product_code AND p.tenant_id = poi.tenant_id
+      JOIN products p ON p.id = poi.product_id AND p.tenant_id = poi.tenant_id
       ${unitJoin}
       WHERE poi.tenant_id = ? AND poi.po_id IN (${orders.map(() => '?').join(',')})
       ORDER BY poi.id ASC
@@ -108,7 +108,15 @@ async function createOrder({ tenantId, supplierId = '', expectedDate, items = []
   );
 
   for (const item of items) {
-    const [product] = await query('SELECT id FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, item.productId]);
+    const [product] = await query(
+      `
+        SELECT id, product_code
+        FROM products
+        WHERE tenant_id = ? AND (product_code = ? OR id = ?)
+        LIMIT 1
+      `,
+      [tenantId, item.productId, Number(item.productId) || 0]
+    );
     if (!product) {
       throw new Error(`Product not found: ${item.productId}`);
     }
@@ -116,13 +124,14 @@ async function createOrder({ tenantId, supplierId = '', expectedDate, items = []
     await query(
       `
         INSERT INTO purchase_order_items (
-          tenant_id, po_id, product_id, quantity_ordered, quantity_received, unit_price, total_price
-        ) VALUES (?, ?, ?, ?, 0, ?, ?)
+          tenant_id, po_id, product_id, product_code, quantity_ordered, quantity_received, unit_price, total_price
+        ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
       `,
       [
         tenantId,
         result.insertId,
         product.id,
+        product.product_code,
         item.quantity,
         item.unitPrice,
         item.totalPrice || item.quantity * item.unitPrice,
