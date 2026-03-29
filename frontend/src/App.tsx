@@ -7,6 +7,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { authApi, AuthUser } from './services/api';
 import { Button } from './components/common/Button';
+import { TenantProvider, useTenant } from './contexts/TenantContext';
+import { TenantSwitcher } from './components/tenant/TenantSwitcher';
+import { ExecutiveDashboard } from './components/executive/ExecutiveDashboard';
 
 type AppTab = 'login' | 'dashboard' | 'stock' | 'procurement' | 'reports' | 'settings';
 
@@ -50,6 +53,7 @@ function App() {
         setActiveTab(getTabFromHash(true));
       } catch {
         localStorage.removeItem('token');
+        localStorage.removeItem('tenant_id');
         setCurrentUser(null);
         setActiveTab('login');
         window.location.hash = '#login';
@@ -69,6 +73,7 @@ function App() {
 
   const handleLogin = (token: string, user: AuthUser) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('tenant_id', String(user.tenantId || 1));
     setCurrentUser(user);
     setActiveTab('dashboard');
     window.location.hash = '#dashboard';
@@ -78,33 +83,15 @@ function App() {
     try {
       await authApi.logout();
     } catch {
-      // ignore logout errors; client token is authoritative for current session
+      // ignore logout errors
     } finally {
       localStorage.removeItem('token');
+      localStorage.removeItem('tenant_id');
       setCurrentUser(null);
       setActiveTab('login');
       window.location.hash = '#login';
     }
   };
-
-  const page = useMemo(() => {
-    if (!currentUser) {
-      return <LoginPage onLogin={handleLogin} />;
-    }
-
-    switch (activeTab) {
-      case 'stock':
-        return <StockManagementPage />;
-      case 'procurement':
-        return <ProcurementPage />;
-      case 'reports':
-        return <ReportsPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <DashboardPage />;
-    }
-  }, [activeTab, currentUser]);
 
   const handleSelectTab = (tab: Exclude<AppTab, 'login'>) => {
     window.location.hash = tab === 'dashboard' ? '#dashboard' : `#${tab}`;
@@ -120,8 +107,56 @@ function App() {
   }
 
   if (!currentUser) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <TenantProvider>
+        <LoginPage onLogin={handleLogin} />
+      </TenantProvider>
+    );
   }
+
+  return (
+    <TenantProvider>
+      <AppContent
+        currentUser={currentUser}
+        activeTab={activeTab}
+        onSelectTab={handleSelectTab}
+        onLogout={handleLogout}
+      />
+    </TenantProvider>
+  );
+}
+
+function AppContent({
+  currentUser,
+  activeTab,
+  onSelectTab,
+  onLogout,
+}: {
+  currentUser: AuthUser;
+  activeTab: AppTab;
+  onSelectTab: (tab: Exclude<AppTab, 'login'>) => void;
+  onLogout: () => Promise<void>;
+}) {
+  const { isExecutive } = useTenant();
+
+  const page = useMemo(() => {
+    if (isExecutive && activeTab === 'dashboard') {
+      return <ExecutiveDashboard />;
+    }
+
+    switch (activeTab) {
+      case 'stock':
+        return <StockManagementPage />;
+      case 'procurement':
+        return <ProcurementPage />;
+      case 'reports':
+        return <ReportsPage />;
+      case 'settings':
+        return <SettingsPage />;
+      default:
+        return <DashboardPage />;
+    }
+  }, [activeTab, isExecutive]);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -129,7 +164,9 @@ function App() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="text-sm font-medium uppercase tracking-[0.2em] text-sky-700">Inventory Procurement</div>
+              <div className="text-sm font-medium uppercase tracking-[0.2em] text-sky-700">
+                Inventory Procurement SaaS
+              </div>
               <h1 className="text-2xl font-bold">ระบบคลังยาและจัดซื้อ</h1>
             </div>
             <div className="flex flex-col items-start gap-2 text-sm text-slate-500 lg:items-end">
@@ -139,12 +176,15 @@ function App() {
                   timeStyle: 'short',
                 })}
               </div>
-              <div className="text-slate-600">
-                {currentUser.fullName} ({currentUser.role})
+              <div className="flex items-center gap-2">
+                <TenantSwitcher />
+                <span className="text-slate-600">
+                  {currentUser.fullName} ({currentUser.role})
+                </span>
+                <Button variant="secondary" size="sm" onClick={onLogout}>
+                  Logout
+                </Button>
               </div>
-              <Button variant="secondary" size="sm" onClick={handleLogout}>
-                Logout
-              </Button>
             </div>
           </div>
 
@@ -153,7 +193,7 @@ function App() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => handleSelectTab(tab.id)}
+                onClick={() => onSelectTab(tab.id)}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   activeTab === tab.id
                     ? 'bg-sky-600 text-white shadow'

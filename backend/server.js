@@ -12,7 +12,11 @@ const suppliersRouter = require('./routes/suppliers');
 const approvalsRouter = require('./routes/approvals');
 const reportsRouter = require('./routes/reports');
 const usersRouter = require('./routes/users');
+const adminRouter = require('./routes/admin');
+const executiveRouter = require('./routes/executive');
 const { isAuthenticated } = require('./middleware/auth');
+const { requireTenant, requireActiveTenant } = require('./middleware/tenant-isolation');
+const { tenantLimiter, loginLimiter, exportLimiter } = require('./middleware/rate-limit');
 const { closePool } = require('./db/pool');
 const { ensureAppSchema } = require('./db/app');
 
@@ -36,9 +40,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Rate limiting on auth endpoints
+app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRouter);
-app.use('/api', isAuthenticated);
 
+// Apply rate limiting to all API routes
+app.use('/api', tenantLimiter);
+app.use('/api', isAuthenticated, requireTenant, requireActiveTenant);
+
+// Tenant-scoped routes
 app.use('/api/products', productsRouter);
 app.use('/api/stock', stockRouter);
 app.use('/api/purchase-orders', purchaseOrdersRouter);
@@ -47,6 +57,12 @@ app.use('/api/suppliers', suppliersRouter);
 app.use('/api/approvals', approvalsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/users', usersRouter);
+
+// Admin routes (tenant management, requires admin role)
+app.use('/api/admin', adminRouter);
+
+// Executive routes (cross-tenant aggregation, requires admin/executive role)
+app.use('/api/executive', executiveRouter);
 
 app.get('/api', (req, res) => {
   res.json({

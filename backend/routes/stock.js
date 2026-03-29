@@ -25,11 +25,29 @@ function mapStockItem(row) {
   };
 }
 
+function mapStockItem(row) {
+  return {
+    id: String(row.id),
+    productId: row.product_code,
+    productName: row.product_name,
+    productCode: row.product_code,
+    lotNumber: row.lot_number,
+    expiryDate: row.expiry_date,
+    quantity: Number(row.quantity || 0),
+    unit: row.unit || '',
+    location: row.location || 'MAIN',
+    status: Number(row.quantity || 0) > 0 ? 'available' : 'damaged',
+    receivedDate: row.received_date,
+    unitCost: Number(row.unit_cost || 0),
+  };
+}
+
 router.get('/items', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const params = [];
-    let where = 'WHERE l.quantity > 0';
+    const tenantId = req.tenantId;
+    const params = [tenantId];
+    let where = 'WHERE l.tenant_id = ? AND l.quantity > 0';
     if (req.query.productId) {
       where += ' AND l.product_code = ?';
       params.push(req.query.productId);
@@ -39,7 +57,7 @@ router.get('/items', async (req, res, next) => {
       `
         SELECT l.*, p.product_name, ${unitNameExpr} AS unit
         FROM invp_stock_lots l
-        JOIN products p ON p.product_code = l.product_code
+        JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
         ${unitJoin}
         ${where}
         ORDER BY COALESCE(l.expiry_date, '9999-12-31') ASC, l.received_date ASC
@@ -56,6 +74,7 @@ router.get('/items', async (req, res, next) => {
 router.get('/scan/:barcode', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const rows = await query(
       `
         SELECT
@@ -75,10 +94,10 @@ router.get('/scan/:barcode', async (req, res, next) => {
         ${unitJoin}
         LEFT JOIN stock_levels sl ON sl.product_id = p.id
         ${lotBalanceJoin}
-        WHERE p.product_code = ? OR p.barcode = ? OR p.tmt_code = ?
+        WHERE p.tenant_id = ? AND (p.product_code = ? OR p.barcode = ? OR p.tmt_code = ?)
         LIMIT 1
       `,
-      [req.params.barcode, req.params.barcode, req.params.barcode]
+      [tenantId, req.params.barcode, req.params.barcode, req.params.barcode]
     );
 
     if (!rows[0]) {
@@ -89,12 +108,12 @@ router.get('/scan/:barcode', async (req, res, next) => {
       `
         SELECT l.*, p.product_name, ${unitNameExpr} AS unit
         FROM invp_stock_lots l
-        JOIN products p ON p.product_code = l.product_code
+        JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
         ${unitJoin}
-        WHERE l.product_code = ? AND l.quantity > 0
+        WHERE l.tenant_id = ? AND l.product_code = ? AND l.quantity > 0
         ORDER BY COALESCE(l.expiry_date, '9999-12-31') ASC
       `,
-      [rows[0].id]
+      [tenantId, rows[0].id]
     );
 
     res.json({
@@ -122,18 +141,21 @@ router.get('/scan/:barcode', async (req, res, next) => {
 router.get('/goods-receipts', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const receipts = await query(`
-      SELECT *
-      FROM invp_goods_receipts
-      ORDER BY received_date DESC
-      LIMIT 200
-    `);
-    const items = await query(`
-      SELECT gri.*, p.product_name
-      FROM invp_goods_receipt_items gri
-      JOIN products p ON p.product_code = gri.product_code
-      ORDER BY gri.id ASC
-    `);
+    const tenantId = req.tenantId;
+    const receipts = await query(
+      `SELECT * FROM invp_goods_receipts WHERE tenant_id = ? ORDER BY received_date DESC LIMIT 200`,
+      [tenantId]
+    );
+    const items = await query(
+      `
+        SELECT gri.*, p.product_name
+        FROM invp_goods_receipt_items gri
+        JOIN products p ON p.product_code = gri.product_code AND p.tenant_id = gri.tenant_id
+        WHERE gri.tenant_id = ?
+        ORDER BY gri.id ASC
+      `,
+      [tenantId]
+    );
 
     const itemsByReceipt = items.reduce((acc, item) => {
       const key = String(item.goods_receipt_id);
@@ -172,6 +194,7 @@ router.post('/goods-receipt', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { supplierId = '', invoiceNumber = '', notes = '', items = [] } = req.body;
     if (!items.length) {
       return res.status(400).json({ message: 'At least one item is required' });
@@ -183,27 +206,29 @@ router.post('/goods-receipt', async (req, res, next) => {
     await connection.beginTransaction();
 
     const [[countRow]] = await connection.query(
-      'SELECT COUNT(*) AS total FROM invp_goods_receipts WHERE DATE(received_date) = CURDATE()'
+      'SELECT COUNT(*) AS total FROM invp_goods_receipts WHERE tenant_id = ? AND DATE(received_date) = CURDATE()',
+      [tenantId]
     );
     const receiptNumber = `GR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(Number(countRow.total || 0) + 1).padStart(4, '0')}`;
 
     const [receiptResult] = await connection.execute(
       `
         INSERT INTO invp_goods_receipts (
-          receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
-        ) VALUES (?, ?, ?, ?, ?, 'admin', NOW())
+          tenant_id, receipt_number, supplier_id, supplier_name, invoice_number, notes, received_by, received_date
+        ) VALUES (?, ?, ?, ?, ?, ?, 'admin', NOW())
       `,
-      [receiptNumber, supplierId || null, supplierName, invoiceNumber, notes]
+      [tenantId, receiptNumber, supplierId || null, supplierName, invoiceNumber, notes]
     );
 
     for (const item of items) {
       await connection.execute(
         `
           INSERT INTO invp_goods_receipt_items (
-            goods_receipt_id, product_code, lot_number, expiry_date, quantity, unit_cost, location
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            tenant_id, goods_receipt_id, product_code, lot_number, expiry_date, quantity, unit_cost, location
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
+          tenantId,
           receiptResult.insertId,
           item.productId,
           item.lotNumber,
@@ -217,7 +242,7 @@ router.post('/goods-receipt', async (req, res, next) => {
       await connection.execute(
         `
           INSERT INTO invp_stock_lots (
-            product_code, lot_number, expiry_date, quantity, unit_cost, location,
+            tenant_id, product_code, lot_number, expiry_date, quantity, unit_cost, location,
             source_type, source_ref, supplier_id, supplier_name, received_date
           ) VALUES (?, ?, ?, ?, ?, ?, 'goods_receipt', ?, ?, ?, NOW())
           ON DUPLICATE KEY UPDATE
@@ -229,6 +254,7 @@ router.post('/goods-receipt', async (req, res, next) => {
             updated_at = CURRENT_TIMESTAMP
         `,
         [
+          tenantId,
           item.productId,
           item.lotNumber,
           item.expiryDate || null,
@@ -244,10 +270,10 @@ router.post('/goods-receipt', async (req, res, next) => {
       await connection.execute(
         `
           INSERT INTO invp_stock_movements (
-            movement_type, product_code, lot_number, quantity, reference, performed_by, notes
+            tenant_id, movement_type, product_code, lot_number, quantity, reference, performed_by, notes
           ) VALUES ('receipt', ?, ?, ?, ?, 'admin', ?)
         `,
-        [item.productId, item.lotNumber, item.quantity, receiptNumber, notes]
+        [tenantId, item.productId, item.lotNumber, item.quantity, receiptNumber, notes]
       );
 
       await syncRemain(item.productId, Number(item.quantity || 0), connection);
@@ -321,13 +347,18 @@ router.post('/import/drugstorereceive-bundle', async (req, res, next) => {
 router.get('/adjustments', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query(`
-      SELECT a.*, p.product_name
-      FROM invp_stock_adjustments a
-      JOIN products p ON p.product_code = a.product_code
-      ORDER BY a.created_at DESC
-      LIMIT 200
-    `);
+    const tenantId = req.tenantId;
+    const rows = await query(
+      `
+        SELECT a.*, p.product_name
+        FROM invp_stock_adjustments a
+        JOIN products p ON p.product_code = a.product_code AND p.tenant_id = a.tenant_id
+        WHERE a.tenant_id = ?
+        ORDER BY a.created_at DESC
+        LIMIT 200
+      `,
+      [tenantId]
+    );
 
     res.json(
       rows.map((row) => ({
@@ -353,29 +384,30 @@ router.post('/adjustment', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { productId, lotNumber, previousQty, newQty, reason, reasonDetail = '', notes = '' } = req.body;
     const delta = Number(newQty || 0) - Number(previousQty || 0);
 
     await connection.beginTransaction();
     await connection.execute(
-      'UPDATE invp_stock_lots SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE product_code = ? AND lot_number = ?',
-      [newQty, productId, lotNumber]
+      'UPDATE invp_stock_lots SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND product_code = ? AND lot_number = ?',
+      [newQty, tenantId, productId, lotNumber]
     );
     await connection.execute(
       `
         INSERT INTO invp_stock_adjustments (
-          product_code, lot_number, previous_qty, new_qty, reason, reason_detail, notes, adjusted_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'admin')
+          tenant_id, product_code, lot_number, previous_qty, new_qty, reason, reason_detail, notes, adjusted_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'admin')
       `,
-      [productId, lotNumber, previousQty, newQty, reason, reasonDetail, notes]
+      [tenantId, productId, lotNumber, previousQty, newQty, reason, reasonDetail, notes]
     );
     await connection.execute(
       `
         INSERT INTO invp_stock_movements (
-          movement_type, product_code, lot_number, quantity, reference, performed_by, notes
+          tenant_id, movement_type, product_code, lot_number, quantity, reference, performed_by, notes
         ) VALUES ('adjustment', ?, ?, ?, 'manual-adjustment', 'admin', ?)
       `,
-      [productId, lotNumber, delta, notes || reasonDetail || reason]
+      [tenantId, productId, lotNumber, delta, notes || reasonDetail || reason]
     );
     await syncRemain(productId, delta, connection);
     await connection.commit();
@@ -393,6 +425,7 @@ router.post('/deduct', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { productId, quantity, notes = '' } = req.body;
     const qty = Number(quantity || 0);
     if (!productId || qty <= 0) {
@@ -403,10 +436,10 @@ router.post('/deduct', async (req, res, next) => {
       `
         SELECT *
         FROM invp_stock_lots
-        WHERE product_code = ? AND quantity > 0
+        WHERE tenant_id = ? AND product_code = ? AND quantity > 0
         ORDER BY COALESCE(expiry_date, '9999-12-31') ASC, received_date ASC
       `,
-      [productId]
+      [tenantId, productId]
     );
 
     let remaining = qty;
@@ -419,14 +452,14 @@ router.post('/deduct', async (req, res, next) => {
       const used = Math.min(Number(lot.quantity || 0), remaining);
       remaining -= used;
       usedLots.push({ lotNumber: lot.lot_number, quantity: used });
-      await connection.execute('UPDATE invp_stock_lots SET quantity = quantity - ? WHERE id = ?', [used, lot.id]);
+      await connection.execute('UPDATE invp_stock_lots SET quantity = quantity - ? WHERE tenant_id = ? AND id = ?', [used, tenantId, lot.id]);
       await connection.execute(
         `
           INSERT INTO invp_stock_movements (
-            movement_type, product_code, lot_number, quantity, reference, performed_by, notes
+            tenant_id, movement_type, product_code, lot_number, quantity, reference, performed_by, notes
           ) VALUES ('dispensing', ?, ?, ?, 'fefo-deduct', 'admin', ?)
         `,
-        [productId, lot.lot_number, -used, notes]
+        [tenantId, productId, lot.lot_number, -used, notes]
       );
     }
 

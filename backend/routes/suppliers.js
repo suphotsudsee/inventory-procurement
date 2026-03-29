@@ -24,7 +24,8 @@ function mapSupplier(row) {
 router.get('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query('SELECT * FROM suppliers ORDER BY is_active DESC, name_th ASC');
+    const tenantId = req.tenantId;
+    const rows = await query('SELECT * FROM suppliers WHERE tenant_id = ? ORDER BY is_active DESC, name_th ASC', [tenantId]);
     res.json(rows.map(mapSupplier));
   } catch (error) {
     next(error);
@@ -34,12 +35,13 @@ router.get('/', async (req, res, next) => {
 router.get('/performance', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { supplierId } = req.query;
-    const params = [];
-    let where = '';
+    const params = [tenantId];
+    let where = 'WHERE s.tenant_id = ?';
 
     if (supplierId) {
-      where = 'WHERE s.id = ?';
+      where += ' AND s.id = ?';
       params.push(supplierId);
     }
 
@@ -56,7 +58,7 @@ router.get('/performance', async (req, res, next) => {
           MAX(po.order_date) AS last_order_date,
           COALESCE(SUM(CASE WHEN po.status = 'cancelled' THEN 1 ELSE 0 END), 0) AS issues
         FROM suppliers s
-        LEFT JOIN purchase_orders po ON po.supplier_id = s.id
+        LEFT JOIN purchase_orders po ON po.supplier_id = s.id AND po.tenant_id = s.tenant_id
         ${where}
         GROUP BY s.id, s.name_th, s.rating
         ORDER BY total_spend DESC, s.name_th ASC
@@ -85,7 +87,8 @@ router.get('/performance', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.id]);
+    const tenantId = req.tenantId;
+    const rows = await query('SELECT * FROM suppliers WHERE tenant_id = ? AND id = ?', [tenantId, req.params.id]);
     if (!rows[0]) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
@@ -98,6 +101,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const {
       name,
       contactPerson = '',

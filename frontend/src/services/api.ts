@@ -7,12 +7,20 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for auth token
+// Request interceptor for auth token and tenant context
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  const tenantId = localStorage.getItem('tenant_id');
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Include tenant ID in headers for multi-tenant support
+  if (tenantId) {
+    config.headers['X-Tenant-ID'] = tenantId;
+  }
+  
   return config;
 });
 
@@ -22,6 +30,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('tenant_id');
       window.location.hash = '#login';
     }
     return Promise.reject(error);

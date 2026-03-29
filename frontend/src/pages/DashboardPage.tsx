@@ -7,8 +7,10 @@ import { ExpiryAlertsTable } from '../components/dashboard/ExpiryAlertsTable';
 import { Loading } from '../components/common/Loading';
 import { ErrorState } from '../components/common/ErrorState';
 import { Modal } from '../components/common/Modal';
+import { useTenant } from '../contexts/TenantContext';
 
 export const DashboardPage: React.FC = () => {
+  const { currentTenant, isLoading: tenantLoading } = useTenant();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedExpiryAlert, setSelectedExpiryAlert] = useState<ExpiryAlert | null>(null);
 
@@ -53,7 +55,7 @@ export const DashboardPage: React.FC = () => {
     window.location.hash = '#reports/expiry';
   };
 
-  if (summaryLoading && !summary) {
+  if (tenantLoading || (summaryLoading && !summary)) {
     return <Loading fullScreen message="กำลังโหลดข้อมูล..." />;
   }
 
@@ -75,8 +77,20 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-sm text-gray-500">อัปเดตล่าสุด: {new Date().toLocaleString('th-TH')}</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+            {currentTenant && (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                {currentTenant.tenant_code}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500">
+            อัปเดตล่าสุด: {new Date().toLocaleString('th-TH')}
+            {currentTenant && (
+              <span className="ml-2">• {currentTenant.tenant_name}</span>
+            )}
+          </p>
         </div>
         <button
           type="button"

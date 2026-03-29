@@ -33,7 +33,7 @@ router.post('/login', async (req, res, next) => {
 
     const rows = await query(
       `
-        SELECT id, username, password_hash, email, full_name, role, is_active
+        SELECT id, username, password_hash, email, full_name, role, is_active, tenant_id
         FROM users
         WHERE username = ?
         LIMIT 1
@@ -53,8 +53,9 @@ router.post('/login', async (req, res, next) => {
     await query('UPDATE users SET last_login = NOW(), updated_at = CURRENT_TIMESTAMP WHERE id = ?', [rows[0].id]);
 
     const user = mapUser(rows[0]);
-    const token = signToken(user);
-    res.json({ token, user });
+    // Include tenant_id in token payload
+    const token = signToken({ ...user, tenantId: rows[0].tenant_id });
+    res.json({ token, user, tenantId: rows[0].tenant_id });
   } catch (error) {
     next(error);
   }

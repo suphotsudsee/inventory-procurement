@@ -45,11 +45,16 @@ router.get('/roles', async (req, res) => {
 router.get('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query(`
-      SELECT id, username, email, full_name, role, is_active, last_login, created_at, updated_at
-      FROM users
-      ORDER BY is_active DESC, username ASC
-    `);
+    const tenantId = req.tenantId;
+    const rows = await query(
+      `
+        SELECT id, username, email, full_name, role, is_active, last_login, created_at, updated_at
+        FROM users
+        WHERE tenant_id = ?
+        ORDER BY is_active DESC, username ASC
+      `,
+      [tenantId]
+    );
     res.json(rows.map(mapUser));
   } catch (error) {
     next(error);
@@ -60,6 +65,7 @@ router.post('/', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const payload = normalizeUserPayload(req.body);
 
     if (!payload.username || !payload.fullName || !payload.password) {
@@ -69,7 +75,8 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid role' });
     }
 
-    const existing = await query('SELECT id FROM users WHERE username = ? LIMIT 1', [payload.username]);
+    // Check for duplicate within tenant
+    const existing = await query('SELECT id FROM users WHERE tenant_id = ? AND username = ? LIMIT 1', [tenantId, payload.username]);
     if (existing[0]) {
       return res.status(409).json({ message: 'Username already exists' });
     }
@@ -79,10 +86,10 @@ router.post('/', async (req, res, next) => {
     await connection.beginTransaction();
     const [result] = await connection.execute(
       `
-        INSERT INTO users (username, password_hash, email, full_name, role, is_active)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO users (tenant_id, username, password_hash, email, full_name, role, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [payload.username, passwordHash, payload.email || null, payload.fullName, payload.role, payload.active ? 1 : 0]
+      [tenantId, payload.username, passwordHash, payload.email || null, payload.fullName, payload.role, payload.active ? 1 : 0]
     );
     await connection.commit();
 

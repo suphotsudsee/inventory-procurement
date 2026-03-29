@@ -20,7 +20,7 @@ function mapStatus(status) {
   }
 }
 
-async function loadOrders(where = '', params = []) {
+async function loadOrders(where = '', params = [], tenantId) {
   const orders = await query(
     `
       SELECT
@@ -28,10 +28,11 @@ async function loadOrders(where = '', params = []) {
         s.name_th AS supplier_name
       FROM purchase_orders po
       JOIN suppliers s ON s.id = po.supplier_id
-      ${where}
+      WHERE po.tenant_id = ?
+      ${where ? 'AND ' + where : ''}
       ORDER BY po.created_at DESC
     `,
-    params
+    [tenantId, ...params]
   );
 
   if (!orders.length) {
@@ -46,12 +47,12 @@ async function loadOrders(where = '', params = []) {
         p.product_name,
         ${unitNameExpr} AS unit
       FROM purchase_order_items poi
-      JOIN products p ON p.id = poi.product_id
+      JOIN products p ON p.product_code = poi.product_code AND p.tenant_id = poi.tenant_id
       ${unitJoin}
-      WHERE poi.po_id IN (${orders.map(() => '?').join(',')})
+      WHERE poi.tenant_id = ? AND poi.po_id IN (${orders.map(() => '?').join(',')})
       ORDER BY poi.id ASC
     `,
-    orders.map((order) => order.id)
+    [tenantId, ...orders.map((order) => order.id)]
   );
 
   const itemsByOrder = items.reduce((acc, item) => {
@@ -86,27 +87,27 @@ async function loadOrders(where = '', params = []) {
   }));
 }
 
-async function createOrder({ supplierId = '', expectedDate, items = [], notes = '' }) {
+async function createOrder({ tenantId, supplierId = '', expectedDate, items = [], notes = '' }) {
   const supplier = supplierId ? await getSupplierById(supplierId) : null;
   if (!supplier) {
     throw new Error('Supplier not found');
   }
 
-  const [{ total }] = await query('SELECT COUNT(*) AS total FROM purchase_orders WHERE DATE(created_at) = CURDATE()');
+  const [{ total }] = await query('SELECT COUNT(*) AS total FROM purchase_orders WHERE tenant_id = ? AND DATE(created_at) = CURDATE()', [tenantId]);
   const poNumber = `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(Number(total || 0) + 1).padStart(4, '0')}`;
   const totalAmount = items.reduce((sum, item) => sum + Number(item.totalPrice || item.quantity * item.unitPrice || 0), 0);
 
   const result = await query(
     `
       INSERT INTO purchase_orders (
-        po_number, supplier_id, order_date, expected_delivery_date, status, total_amount, notes, created_by
-      ) VALUES (?, ?, CURDATE(), ?, 'pending_approval', ?, ?, ?)
+        tenant_id, po_number, supplier_id, order_date, expected_delivery_date, status, total_amount, notes, created_by
+      ) VALUES (?, ?, ?, CURDATE(), ?, 'pending_approval', ?, ?, ?)
     `,
-    [poNumber, Number(supplierId), expectedDate, totalAmount, notes, DEFAULT_USER_ID]
+    [tenantId, poNumber, Number(supplierId), expectedDate, totalAmount, notes, DEFAULT_USER_ID]
   );
 
   for (const item of items) {
-    const [product] = await query('SELECT id FROM products WHERE product_code = ? LIMIT 1', [item.productId]);
+    const [product] = await query('SELECT id FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, item.productId]);
     if (!product) {
       throw new Error(`Product not found: ${item.productId}`);
     }
@@ -114,10 +115,11 @@ async function createOrder({ supplierId = '', expectedDate, items = [], notes = 
     await query(
       `
         INSERT INTO purchase_order_items (
-          po_id, product_id, quantity_ordered, quantity_received, unit_price, total_price
-        ) VALUES (?, ?, ?, 0, ?, ?)
+          tenant_id, po_id, product_id, quantity_ordered, quantity_received, unit_price, total_price
+        ) VALUES (?, ?, ?, ?, 0, ?, ?)
       `,
       [
+        tenantId,
         result.insertId,
         product.id,
         item.quantity,
@@ -135,13 +137,14 @@ async function createOrder({ supplierId = '', expectedDate, items = [], notes = 
     [result.insertId, DEFAULT_USER_ID]
   );
 
-  const orders = await loadOrders('WHERE po.id = ?', [result.insertId]);
+  const orders = await loadOrders('AND po.id = ?', [result.insertId], tenantId);
   return orders[0];
 }
 
 router.get('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { status, supplierId } = req.query;
     const conditions = [];
     const params = [];
@@ -161,8 +164,8 @@ router.get('/', async (req, res, next) => {
       params.push(supplierId);
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    res.json(await loadOrders(where, params));
+    const where = conditions.length ? conditions.join(' AND ') : '';
+    res.json(await loadOrders(where, params, tenantId));
   } catch (error) {
     next(error);
   }
@@ -171,7 +174,8 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const orders = await loadOrders('WHERE po.id = ?', [req.params.id]);
+    const tenantId = req.tenantId;
+    const orders = await loadOrders('AND po.id = ?', [req.params.id], tenantId);
     if (!orders[0]) {
       return res.status(404).json({ message: 'Purchase order not found' });
     }
@@ -184,12 +188,13 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { supplierId = '', expectedDate, items = [], notes = '' } = req.body;
     if (!expectedDate || !items.length) {
       return res.status(400).json({ message: 'Expected date and items are required' });
     }
 
-    res.status(201).json(await createOrder({ supplierId, expectedDate, items, notes }));
+    res.status(201).json(await createOrder({ tenantId, supplierId, expectedDate, items, notes }));
   } catch (error) {
     next(error);
   }
@@ -198,7 +203,8 @@ router.post('/', async (req, res, next) => {
 router.post('/from-low-stock', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const suppliers = await query('SELECT * FROM suppliers WHERE is_active = 1 ORDER BY name_th ASC LIMIT 1');
+    const tenantId = req.tenantId;
+    const suppliers = await query('SELECT * FROM suppliers WHERE tenant_id = ? AND is_active = 1 ORDER BY name_th ASC LIMIT 1', [tenantId]);
     const lowStockProducts = await query(`
       SELECT
         p.product_code,
@@ -212,11 +218,11 @@ router.post('/from-low-stock', async (req, res, next) => {
       ${unitJoin}
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
       ${lotBalanceJoin}
-      WHERE p.is_active = 1
+      WHERE p.tenant_id = ? AND p.is_active = 1
         AND ${currentStockExpr} <= COALESCE(sl.reorder_point, p.reorder_point, 0)
       ORDER BY ${currentStockExpr} ASC
       LIMIT 20
-    `);
+    `, [tenantId]);
 
     if (!lowStockProducts.length) {
       return res.status(400).json({ message: 'No low stock products found' });
@@ -229,6 +235,7 @@ router.post('/from-low-stock', async (req, res, next) => {
 
     const expectedDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const order = await createOrder({
+      tenantId,
       supplierId: String(supplier.id),
       expectedDate,
       notes: 'Generated from low stock items',

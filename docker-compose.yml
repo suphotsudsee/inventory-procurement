@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: saas-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-saas_root_password_change_me}
+      MYSQL_DATABASE: inventory_saas
+      MYSQL_USER: inventory_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:-saas_app_password_change_me}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-backend
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: inventory_app
+      DB_PASSWORD: ${DB_PASSWORD:-saas_app_password_change_me}
+      DB_NAME: inventory_saas
+      JWT_SECRET: ${JWT_SECRET:-change_this_jwt_secret_in_production}
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    networks:
+      - saas-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saas-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    networks:
+      - saas-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  saas-network:
+    driver: bridge

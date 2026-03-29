@@ -3,6 +3,7 @@ const { pool, query } = require('../db/pool');
 const { ensureAppSchema } = require('../db/app');
 const { lotBalanceJoin, currentStockExpr } = require('../utils/stock-balance');
 const { unitJoin, unitNameExpr } = require('../utils/unit-name');
+const { scopeToTenant } = require('../middleware/tenant-isolation');
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ const baseSelect = `
   ${unitJoin}
   LEFT JOIN stock_levels sl ON sl.product_id = p.id
   ${lotBalanceJoin}
+  WHERE p.tenant_id = ?
 `;
 
 const baseFrom = `
@@ -67,6 +69,7 @@ const baseFrom = `
   ${unitJoin}
   LEFT JOIN stock_levels sl ON sl.product_id = p.id
   ${lotBalanceJoin}
+  WHERE p.tenant_id = ?
 `;
 
 async function findCategoryId(categoryName) {
@@ -100,9 +103,10 @@ function normalizeProductPayload(body) {
 router.get('/', async (req, res, next) => {
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const { search = '', category = '', drugtype = '', lowStock = 'false', inStock = 'false', page, limit } = req.query;
-    const params = [];
-    let where = 'WHERE p.is_active = 1';
+    const params = [tenantId];
+    let where = 'WHERE p.tenant_id = ? AND p.is_active = 1';
 
     if (search) {
       const term = `%${search}%`;
@@ -167,12 +171,11 @@ router.get('/', async (req, res, next) => {
 router.get('/categories/list', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query(`
-      SELECT category_name
-      FROM categories
-      WHERE is_active = 1
-      ORDER BY category_name ASC
-    `);
+    const tenantId = req.tenantId;
+    const rows = await query(
+      `SELECT DISTINCT category_name FROM products WHERE tenant_id = ? AND is_active = 1 ORDER BY category_name ASC`,
+      [tenantId]
+    );
     res.json(rows.map((row) => row.category_name));
   } catch (error) {
     next(error);
@@ -198,6 +201,7 @@ router.post('/', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const payload = normalizeProductPayload(req.body);
 
     if (!payload.code || !payload.name) {
@@ -209,7 +213,8 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ message: 'Category not found' });
     }
 
-    const existing = await query('SELECT id FROM products WHERE product_code = ? LIMIT 1', [payload.code]);
+    // Check for duplicate within tenant
+    const existing = await query('SELECT id FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, payload.code]);
     if (existing[0]) {
       return res.status(409).json({ message: 'Product code already exists' });
     }
@@ -219,12 +224,13 @@ router.post('/', async (req, res, next) => {
     const [insertResult] = await connection.execute(
       `
         INSERT INTO products (
-          product_code, product_name, generic_name, category_id, unit_sell,
+          tenant_id, product_code, product_name, generic_name, category_id, unit_sell,
           min_stock_level, max_stock_level, reorder_point, cost_price, unit_cost,
           barcode, is_active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       `,
       [
+        tenantId,
         payload.code,
         payload.name,
         payload.genericName || null,
@@ -250,7 +256,7 @@ router.post('/', async (req, res, next) => {
 
     await connection.commit();
 
-    const rows = await query(`${baseSelect} WHERE p.product_code = ?`, [payload.code]);
+    const rows = await query(`${baseSelect} AND p.product_code = ?`, [tenantId, payload.code]);
     res.status(201).json(mapProduct(rows[0]));
   } catch (error) {
     await connection.rollback();
@@ -263,7 +269,8 @@ router.post('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const rows = await query(`${baseSelect} WHERE p.product_code = ?`, [req.params.id]);
+    const tenantId = req.tenantId;
+    const rows = await query(`${baseSelect} AND p.product_code = ?`, [tenantId, req.params.id]);
     if (!rows[0]) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -277,9 +284,11 @@ router.put('/:id', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
     await ensureAppSchema();
+    const tenantId = req.tenantId;
     const payload = normalizeProductPayload(req.body);
 
-    const existingRows = await query('SELECT id, product_code FROM products WHERE product_code = ? LIMIT 1', [req.params.id]);
+    // Check product exists within tenant
+    const existingRows = await query('SELECT id, product_code FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, req.params.id]);
     if (!existingRows[0]) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -289,8 +298,9 @@ router.put('/:id', async (req, res, next) => {
       return res.status(400).json({ message: 'Category not found' });
     }
 
+    // Check for duplicate code within tenant
     if (payload.code && payload.code !== req.params.id) {
-      const duplicate = await query('SELECT id FROM products WHERE product_code = ? LIMIT 1', [payload.code]);
+      const duplicate = await query('SELECT id FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, payload.code]);
       if (duplicate[0]) {
         return res.status(409).json({ message: 'Product code already exists' });
       }
@@ -316,7 +326,7 @@ router.put('/:id', async (req, res, next) => {
           unit_cost = ?,
           barcode = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE product_code = ?
+        WHERE tenant_id = ? AND product_code = ?
       `,
       [
         finalCode,
@@ -330,6 +340,7 @@ router.put('/:id', async (req, res, next) => {
         payload.unitCost,
         payload.unitCost,
         payload.barcode || null,
+        tenantId,
         req.params.id,
       ]
     );
@@ -348,16 +359,16 @@ router.put('/:id', async (req, res, next) => {
     );
 
     if (finalCode !== req.params.id) {
-      await connection.execute('UPDATE invp_stock_lots SET product_code = ? WHERE product_code = ?', [finalCode, req.params.id]);
-      await connection.execute('UPDATE invp_stock_movements SET product_code = ? WHERE product_code = ?', [finalCode, req.params.id]);
-      await connection.execute('UPDATE invp_goods_receipt_items SET product_code = ? WHERE product_code = ?', [finalCode, req.params.id]);
-      await connection.execute('UPDATE invp_stock_adjustments SET product_code = ? WHERE product_code = ?', [finalCode, req.params.id]);
-      await connection.execute('UPDATE purchase_order_items SET product_code = ? WHERE product_code = ?', [finalCode, req.params.id]);
+      await connection.execute('UPDATE invp_stock_lots SET product_code = ? WHERE tenant_id = ? AND product_code = ?', [finalCode, tenantId, req.params.id]);
+      await connection.execute('UPDATE invp_stock_movements SET product_code = ? WHERE tenant_id = ? AND product_code = ?', [finalCode, tenantId, req.params.id]);
+      await connection.execute('UPDATE invp_goods_receipt_items SET product_code = ? WHERE tenant_id = ? AND product_code = ?', [finalCode, tenantId, req.params.id]);
+      await connection.execute('UPDATE invp_stock_adjustments SET product_code = ? WHERE tenant_id = ? AND product_code = ?', [finalCode, tenantId, req.params.id]);
+      await connection.execute('UPDATE purchase_order_items SET product_code = ? WHERE tenant_id = ? AND product_code = ?', [finalCode, tenantId, req.params.id]);
     }
 
     await connection.commit();
 
-    const rows = await query(`${baseSelect} WHERE p.product_code = ?`, [finalCode]);
+    const rows = await query(`${baseSelect} AND p.product_code = ?`, [tenantId, finalCode]);
     res.json(mapProduct(rows[0]));
   } catch (error) {
     await connection.rollback();
@@ -370,12 +381,13 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const existingRows = await query('SELECT id FROM products WHERE product_code = ? LIMIT 1', [req.params.id]);
+    const tenantId = req.tenantId;
+    const existingRows = await query('SELECT id FROM products WHERE tenant_id = ? AND product_code = ? LIMIT 1', [tenantId, req.params.id]);
     if (!existingRows[0]) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    await query('UPDATE products SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE product_code = ?', [req.params.id]);
+    await query('UPDATE products SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND product_code = ?', [tenantId, req.params.id]);
     res.json({ success: true });
   } catch (error) {
     next(error);
