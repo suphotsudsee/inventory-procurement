@@ -169,11 +169,12 @@ router.get('/', async (req, res, next) => {
 router.get('/categories/list', async (req, res, next) => {
   try {
     await ensureAppSchema();
-    const tenantId = req.tenantId;
-    const rows = await query(
-      `SELECT DISTINCT category_name FROM products WHERE tenant_id = ? AND is_active = 1 ORDER BY category_name ASC`,
-      [tenantId]
-    );
+    const rows = await query(`
+      SELECT category_name
+      FROM categories
+      WHERE is_active = 1
+      ORDER BY category_name ASC
+    `);
     res.json(rows.map((row) => row.category_name));
   } catch (error) {
     next(error);

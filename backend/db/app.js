@@ -490,18 +490,33 @@ async function seedStockLevelsFromLots() {
 }
 
 async function seedDefaultUsers() {
-  const rows = await query('SELECT COUNT(*) AS total FROM users');
-  if (Number(rows[0]?.total || 0) > 0) {
+  const crypto = require('crypto');
+  const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
+  const existingAdmin = await query('SELECT id FROM users WHERE username = ? LIMIT 1', ['admin']);
+
+  if (existingAdmin[0]) {
+    await query(
+      `
+        UPDATE users
+        SET
+          password_hash = ?,
+          email = COALESCE(email, 'admin@example.local'),
+          full_name = COALESCE(full_name, 'System Administrator'),
+          role = 'admin',
+          is_active = 1,
+          tenant_id = COALESCE(tenant_id, 1),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      [passwordHash, existingAdmin[0].id]
+    );
     return;
   }
 
-  const crypto = require('crypto');
-  const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
-
   await query(
     `
-      INSERT INTO users (username, password_hash, email, full_name, role, is_active)
-      VALUES ('admin', ?, 'admin@example.local', 'System Administrator', 'admin', 1)
+      INSERT INTO users (tenant_id, username, password_hash, email, full_name, role, is_active)
+      VALUES (1, 'admin', ?, 'admin@example.local', 'System Administrator', 'admin', 1)
     `,
     [passwordHash]
   );
