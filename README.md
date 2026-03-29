@@ -134,8 +134,14 @@ cd frontend
 # ติดตั้ง dependencies
 npm install
 
-# สร้างไฟล์ .env (ถ้าต้องการ)
-echo "VITE_API_URL=http://localhost:3001" > .env
+# สร้างไฟล์ .env จากตัวอย่าง
+copy .env.example .env
+```
+
+ไฟล์ `frontend/.env.example`
+
+```env
+VITE_API_PROXY_TARGET=http://localhost:3001
 ```
 
 ---
@@ -156,6 +162,7 @@ npm run dev
 cd frontend
 npm run dev
 # Frontend จะรันที่ http://localhost:5173
+# Proxy /api -> http://localhost:3001
 ```
 
 ### Production Mode
