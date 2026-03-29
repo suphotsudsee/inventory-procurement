@@ -254,11 +254,13 @@ export interface AuthUser {
   role: 'admin' | 'manager' | 'staff' | 'viewer';
   permissions: string[];
   active: boolean;
+  tenantId?: number;
 }
 
 export interface LoginResponse {
   token: string;
   user: AuthUser;
+  tenantId?: number;
 }
 
 export interface ReportFilter {

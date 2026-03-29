@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 
 interface TenantSwitcherProps {
@@ -75,6 +75,9 @@ export function TenantSwitcher({ onSwitch }: TenantSwitcherProps) {
             </div>
             <div className="py-2">
               {availableTenants.map((tenant) => (
+                (() => {
+                  const pendingPos = tenant.pending_pos ?? 0;
+                  return (
                 <button
                   key={tenant.id}
                   onClick={() => handleSwitch(tenant.id)}
@@ -111,11 +114,13 @@ export function TenantSwitcher({ onSwitch }: TenantSwitcherProps) {
                   <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
                     <span>{tenant.product_count || 0} products</span>
                     <span>{tenant.user_count || 0} users</span>
-                    {tenant.pending_pos > 0 && (
-                      <span className="text-yellow-600">{tenant.pending_pos} pending POs</span>
+                    {pendingPos > 0 && (
+                      <span className="text-yellow-600">{pendingPos} pending POs</span>
                     )}
                   </div>
                 </button>
+                  );
+                })()
               ))}
             </div>
           </div>

@@ -13,7 +13,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./backend/database/migrations:/docker-entrypoint-initdb.d
     ports:
-      - "3306:3306"
+      - "${MYSQL_HOST_PORT:-3307}:3306"
     networks:
       - saas-network
     healthcheck:

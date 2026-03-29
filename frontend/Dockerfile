@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:20-bookworm-slim as build
 
 WORKDIR /app
 
@@ -7,7 +7,14 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+# Tailwind v4/PostCSS relies on optional native bindings (@tailwindcss/oxide-*).
+# npm can skip those packages in container builds, so install the matching Linux binding explicitly.
+RUN npm ci --include=optional \
+    && ARCH="$(node -p "process.arch")" \
+    && if [ "$ARCH" = "x64" ]; then npm install --no-save @tailwindcss/oxide-linux-x64-gnu@4.2.2; \
+    elif [ "$ARCH" = "arm64" ]; then npm install --no-save @tailwindcss/oxide-linux-arm64-gnu@4.2.2; \
+    else echo "Unsupported architecture for explicit Tailwind oxide install: $ARCH" && exit 1; \
+    fi
 
 # Copy application code
 COPY . .

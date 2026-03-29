@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
 
 export interface Tenant {
@@ -12,6 +12,9 @@ export interface Tenant {
   max_products: number;
   trial_ends_at?: string;
   subscription_ends_at?: string;
+  product_count?: number;
+  user_count?: number;
+  pending_pos?: number;
 }
 
 export interface TenantContextType {

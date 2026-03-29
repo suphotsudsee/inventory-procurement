@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useTenant } from '../../contexts/TenantContext';
 
@@ -35,7 +35,7 @@ interface Alert {
   [key: string]: any;
 }
 
-interface Alerts {
+interface AlertsData {
   expired_stock: { count: number; items: Alert[] };
   critical_expiry: { count: number; items: Alert[] };
   low_stock: { count: number; items: Alert[] };
@@ -43,10 +43,16 @@ interface Alerts {
   tenant_issues: { count: number; items: Alert[] };
 }
 
+interface AlertsResponse {
+  alerts: AlertsData;
+  total_alerts: number;
+  generated_at: string;
+}
+
 export function ExecutiveDashboard() {
-  const { currentTenant, isExecutive } = useTenant();
+  const { isExecutive } = useTenant();
   const [summary, setSummary] = useState<ExecutiveSummary | null>(null);
-  const [alerts, setAlerts] = useState<Alerts | null>(null);
+  const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
