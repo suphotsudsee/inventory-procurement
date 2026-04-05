@@ -25,11 +25,11 @@ const UNIT_NAME_BY_CODE = {
 const unitJoin = '';
 
 const unitNameExpr = `
-  CASE NULLIF(p.unit_sell, '')
+  CASE NULLIF(p.unit, '')
     ${Object.entries(UNIT_NAME_BY_CODE)
       .map(([code, name]) => `WHEN '${code}' THEN '${name}'`)
       .join('\n    ')}
-    ELSE NULLIF(p.unit_sell, '')
+    ELSE NULLIF(p.unit, '')
   END
 `;
 

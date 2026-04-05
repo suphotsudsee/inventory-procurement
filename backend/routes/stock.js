@@ -55,7 +55,7 @@ router.get('/items', async (req, res, next) => {
 
     const rows = await query(
       `
-        SELECT l.*, p.product_name, ${unitNameExpr} AS unit
+        SELECT l.*, p.name, ${unitNameExpr} AS unit
         FROM invp_stock_lots l
         JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
         ${unitJoin}
@@ -80,7 +80,7 @@ router.get('/scan/:barcode', async (req, res, next) => {
         SELECT
           p.product_code AS id,
           p.product_code AS code,
-          p.product_name AS name,
+          p.name AS name,
           p.generic_name AS generic_name,
           COALESCE(c.category_name, 'ไม่ระบุหมวด') AS category,
           ${unitNameExpr} AS unit,
@@ -106,7 +106,7 @@ router.get('/scan/:barcode', async (req, res, next) => {
 
     const stockItems = await query(
       `
-        SELECT l.*, p.product_name, ${unitNameExpr} AS unit
+        SELECT l.*, p.name, ${unitNameExpr} AS unit
         FROM invp_stock_lots l
         JOIN products p ON p.product_code = l.product_code AND p.tenant_id = l.tenant_id
         ${unitJoin}
@@ -148,7 +148,7 @@ router.get('/goods-receipts', async (req, res, next) => {
     );
     const items = await query(
       `
-        SELECT gri.*, p.product_name
+        SELECT gri.*, p.name
         FROM invp_goods_receipt_items gri
         JOIN products p ON p.product_code = gri.product_code AND p.tenant_id = gri.tenant_id
         WHERE gri.tenant_id = ?
@@ -354,7 +354,7 @@ router.get('/adjustments', async (req, res, next) => {
     const tenantId = req.tenantId;
     const rows = await query(
       `
-        SELECT a.*, p.product_name
+        SELECT a.*, p.name
         FROM invp_stock_adjustments a
         JOIN products p ON p.product_code = a.product_code AND p.tenant_id = a.tenant_id
         WHERE a.tenant_id = ?

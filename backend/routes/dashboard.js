@@ -25,7 +25,7 @@ router.get('/summary', async (req, res, next) => {
       SELECT
         COUNT(*) AS total_products,
         SUM(CASE WHEN ${currentStockExpr} > 0 THEN 1 ELSE 0 END) AS products_in_stock,
-        COALESCE(SUM(${currentStockExpr} * COALESCE(NULLIF(p.unit_cost, 0), p.cost_price, 0)), 0) AS total_stock_value,
+        COALESCE(SUM(${currentStockExpr} * COALESCE(NULLIF(p.unit_cost, 0), p.unit_price, 0)), 0) AS total_stock_value,
         SUM(CASE WHEN ${currentStockExpr} <= COALESCE(sl.reorder_point, p.reorder_point, 0) THEN 1 ELSE 0 END) AS low_stock_count
       FROM products p
       LEFT JOIN stock_levels sl ON sl.product_id = p.id
@@ -66,7 +66,7 @@ router.get('/expiry-alerts', async (req, res, next) => {
         SELECT
           l.id,
           l.product_code,
-          p.product_name,
+          p.name,
           l.lot_number,
           l.expiry_date,
           l.quantity,
@@ -113,14 +113,14 @@ router.get('/low-stock', async (req, res, next) => {
       SELECT
         p.product_code AS id,
         p.product_code AS code,
-        p.product_name AS name,
+        p.name AS name,
         p.generic_name AS generic_name,
         COALESCE(c.category_name, 'ไม่ระบุหมวด') AS category,
         ${unitNameExpr} AS unit,
         ${currentStockExpr} AS current_stock,
         COALESCE(sl.min_level, p.min_stock_level, 0) AS min_level,
         COALESCE(sl.max_level, p.max_stock_level, 0) AS max_level,
-        COALESCE(NULLIF(p.unit_cost, 0), p.cost_price, 0) AS unit_cost
+        COALESCE(NULLIF(p.unit_cost, 0), p.unit_price, 0) AS unit_cost
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       ${unitJoin}

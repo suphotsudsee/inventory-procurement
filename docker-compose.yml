@@ -42,10 +42,7 @@ services:
       - "3001:3001"
     networks:
       - saas-network
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run dev
+    command: node server.js
 
   frontend:
     build:
@@ -60,9 +57,6 @@ services:
       - "5173:5173"
     networks:
       - saas-network
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     command: npm run dev
 
 volumes:

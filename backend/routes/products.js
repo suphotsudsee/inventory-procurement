@@ -34,7 +34,7 @@ function mapProduct(row) {
 const baseSelect = `
   SELECT
     p.product_code AS code,
-    p.product_name AS name,
+    p.name AS name,
     p.generic_name AS generic_name,
     COALESCE(dt.drugtype_code, COALESCE(p.drugtype, '')) AS drugtype_code,
     COALESCE(dt.drugtype_name, 'ไม่ระบุประเภท') AS drugtype_name,
@@ -110,8 +110,8 @@ router.get('/', async (req, res, next) => {
       const term = `%${search}%`;
       where += ` AND (
         p.product_code LIKE ?
-        OR p.product_name LIKE ?
-        OR COALESCE(p.product_name_thai, '') LIKE ?
+        OR p.name LIKE ?
+        OR COALESCE(p.name_thai, '') LIKE ?
         OR COALESCE(p.generic_name, '') LIKE ?
         OR COALESCE(p.barcode, '') LIKE ?
       )`;
@@ -141,14 +141,14 @@ router.get('/', async (req, res, next) => {
     const usePagination = parsedLimit > 0;
 
     if (!usePagination) {
-      const rows = await query(`${baseSelect} ${where} ORDER BY p.product_name ASC`, params);
+      const rows = await query(`${baseSelect} ${where} ORDER BY p.name ASC`, params);
       return res.json(rows.map(mapProduct));
     }
 
     const offset = (parsedPage - 1) * parsedLimit;
     const [countRow] = await query(`SELECT COUNT(*) AS total ${baseFrom} ${where}`, params);
     const rows = await query(
-      `${baseSelect} ${where} ORDER BY p.product_name ASC LIMIT ? OFFSET ?`,
+      `${baseSelect} ${where} ORDER BY p.name ASC LIMIT 10 OFFSET 0`,
       [...params, parsedLimit, offset]
     );
 
@@ -223,7 +223,7 @@ router.post('/', async (req, res, next) => {
     const [insertResult] = await connection.execute(
       `
         INSERT INTO products (
-          tenant_id, product_code, product_name, generic_name, category_id, unit_sell,
+          tenant_id, product_code, product_name, generic_name, category_id, unit,
           min_stock_level, max_stock_level, reorder_point, cost_price, unit_cost,
           barcode, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
@@ -317,7 +317,7 @@ router.put('/:id', async (req, res, next) => {
           product_name = ?,
           generic_name = ?,
           category_id = ?,
-          unit_sell = ?,
+          unit = ?,
           min_stock_level = ?,
           max_stock_level = ?,
           reorder_point = ?,

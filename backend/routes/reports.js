@@ -98,7 +98,7 @@ router.get('/stock-movements', async (req, res, next) => {
 
     const rows = await query(
       `
-        SELECT m.*, p.product_name, ${unitNameExpr} AS unit
+        SELECT m.*, p.name, ${unitNameExpr} AS unit
         FROM invp_stock_movements m
         JOIN products p ON p.product_code = m.product_code AND p.tenant_id = m.tenant_id
         ${unitJoin}
@@ -159,7 +159,7 @@ router.get('/expiry', async (req, res, next) => {
       SELECT
         l.id,
         l.product_code,
-        p.product_name,
+        p.name,
         l.lot_number,
         l.expiry_date,
         l.quantity,

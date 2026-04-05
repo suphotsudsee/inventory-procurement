@@ -267,14 +267,14 @@ router.post('/tenants/:id/clone-master', async (req, res, next) => {
       `
         INSERT INTO products (
           product_code, product_name, product_name_thai, generic_name, category_id, drugtype,
-          pack_size, unit_sell, unit_usage, min_stock_level, max_stock_level, reorder_point,
+          pack_size, unit, unit_usage, min_stock_level, max_stock_level, reorder_point,
           cost_price, sell_price, unit_cost, unit_price, lot_number, expiry_date, old_code,
           tmt_code, properties, caution, is_antibiotic, is_active, source_checksum, barcode,
           storage_condition, tenant_id
         )
         SELECT
-          sp.product_code, sp.product_name, sp.product_name_thai, sp.generic_name, sp.category_id, sp.drugtype,
-          sp.pack_size, sp.unit_sell, sp.unit_usage, sp.min_stock_level, sp.max_stock_level, sp.reorder_point,
+          sp.product_code, sp.name, sp.name_thai, sp.generic_name, sp.category_id, sp.drugtype,
+          sp.pack_size, sp.unit, sp.unit_usage, sp.min_stock_level, sp.max_stock_level, sp.reorder_point,
           sp.cost_price, sp.sell_price, sp.unit_cost, sp.unit_price, sp.lot_number, sp.expiry_date, sp.old_code,
           sp.tmt_code, sp.properties, sp.caution, sp.is_antibiotic, sp.is_active, sp.source_checksum, sp.barcode,
           sp.storage_condition, ?

@@ -45,7 +45,7 @@ async function loadOrders(where = '', params = [], tenantId) {
       SELECT
         poi.*,
         p.product_code,
-        p.product_name,
+        p.name,
         ${unitNameExpr} AS unit
       FROM purchase_order_items poi
       JOIN products p ON p.id = poi.product_id AND p.tenant_id = poi.tenant_id
@@ -218,7 +218,7 @@ router.post('/from-low-stock', async (req, res, next) => {
     const lowStockProducts = await query(`
       SELECT
         p.product_code,
-        p.product_name,
+        p.name,
         ${unitNameExpr} AS unit,
         COALESCE(NULLIF(p.unit_cost, 0), p.cost_price, 0) AS unit_cost,
         ${currentStockExpr} AS current_stock,

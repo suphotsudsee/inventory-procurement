@@ -174,7 +174,7 @@ async function ensureAppSchema() {
       category_id INT NULL,
       drugtype VARCHAR(10) NULL,
       pack_size VARCHAR(100) NULL,
-      unit_sell VARCHAR(50) NULL,
+      unit VARCHAR(50) NULL,
       unit_usage VARCHAR(50) NULL,
       min_stock_level INT DEFAULT 0,
       max_stock_level INT DEFAULT 0,
