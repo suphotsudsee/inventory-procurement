@@ -148,7 +148,7 @@ router.get('/', async (req, res, next) => {
     const offset = (parsedPage - 1) * parsedLimit;
     const [countRow] = await query(`SELECT COUNT(*) AS total ${baseFrom} ${where}`, params);
     const rows = await query(
-      `${baseSelect} ${where} ORDER BY p.name ASC LIMIT 10 OFFSET 0`,
+      `${baseSelect} ${where} ORDER BY p.name ASC LIMIT ? OFFSET ?`,
       [...params, parsedLimit, offset]
     );
 
