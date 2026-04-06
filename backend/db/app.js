@@ -165,6 +165,32 @@ async function ensureAppSchema() {
   await syncCategoryMaster();
 
   await query(`
+    CREATE TABLE IF NOT EXISTS tenants (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_code VARCHAR(50) NOT NULL UNIQUE,
+      tenant_name VARCHAR(255) NOT NULL,
+      tenant_type ENUM('hospital', 'clinic', 'pharmacy', 'health_center') DEFAULT 'hospital',
+      status ENUM('active', 'suspended', 'trial', 'cancelled') DEFAULT 'active',
+      config TEXT NULL,
+      max_users INT DEFAULT 10,
+      max_products INT DEFAULT 5000,
+      subscription_plan ENUM('basic', 'professional', 'enterprise') DEFAULT 'basic',
+      trial_ends_at DATE NULL,
+      subscription_starts_at DATE NULL,
+      subscription_ends_at DATE NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_code (tenant_code),
+      INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await query(`
+    INSERT INTO tenants (id, tenant_code, tenant_name, status, subscription_plan)
+    VALUES (1, 'DEFAULT-001', 'Default Tenant', 'active', 'enterprise')
+    ON DUPLICATE KEY UPDATE tenant_name = VALUES(tenant_name)
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS products (
       id INT AUTO_INCREMENT PRIMARY KEY,
       product_code VARCHAR(50) NOT NULL UNIQUE,
@@ -207,6 +233,10 @@ async function ensureAppSchema() {
   await ensureColumn('products', 'unit_price', 'DECIMAL(10,2) DEFAULT 0');
   await ensureColumn('products', 'barcode', 'VARCHAR(100) NULL');
   await ensureColumn('products', 'storage_condition', 'VARCHAR(255) NULL');
+  await ensureColumn('products', 'name', 'VARCHAR(255) NULL');
+  await query(`UPDATE products SET name = COALESCE(name, product_name, product_name_thai, product_code) WHERE name IS NULL`);
+  await ensureColumn('products', 'unit', 'VARCHAR(50) NULL');
+  await query(`UPDATE products SET unit = COALESCE(unit, unit_usage) WHERE unit IS NULL`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS stock_levels (

@@ -83,7 +83,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   async function loadTenant(tenantId: number) {
     try {
-      const response = await api.get(`/api/admin/tenants/${tenantId}`);
+      const response = await api.get(`/admin/tenants/${tenantId}`);
       const tenant: Tenant = response.data;
       
       setCurrentTenant(tenant);

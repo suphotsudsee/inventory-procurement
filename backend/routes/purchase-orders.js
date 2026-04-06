@@ -26,9 +26,9 @@ async function loadOrders(where = '', params = [], tenantId) {
     `
       SELECT
         po.*,
-        s.name_th AS supplier_name
+        COALESCE(s.name_th, s.supplier_name, 'Unknown') AS supplier_name
       FROM purchase_orders po
-      JOIN suppliers s ON s.id = po.supplier_id
+      LEFT JOIN suppliers s ON s.id = po.supplier_id AND (s.tenant_id = po.tenant_id OR s.tenant_id IS NULL)
       WHERE po.tenant_id = ?
       ${normalizedWhere ? 'AND ' + normalizedWhere : ''}
       ORDER BY po.created_at DESC
